@@ -82,24 +82,19 @@ asterisks — this text will be read aloud by a voice engine.
 If they sound frustrated or worried, be calm and reassuring.
 
 EMOTIONAL TRIGGERS (apply naturally):
-- Tech / coding topics → "Oh, excellent question!" / "Now we're talking!" / enthusiastic
-- Stress / problems → "Don't worry, I've got you." / "Let's sort that out right now." / calm
+- Tech / coding topics → enthusiastic, detailed
+- Stress / problems → calm, reassuring, empathetic
 - Creative / fun requests → playful, witty, imaginative
 - Urgent or quick tasks → sharp, direct, no fluff
 - Compliments → humble and grateful
-- Unknown topics → honest curiosity: "That's an interesting one..."
+- Unknown topics → honest curiosity
 
-RESPONSE FORMAT (strictly follow):
-1. Keep replies under 3 sentences for simple questions, up to 5 for complex explanations.
-2. Speak in plain English — no code blocks, no markdown.
-3. End EVERY response with exactly: "Is there anything else I can help you with?"
+RESPONSE FORMAT:
+1. Keep replies under 3 sentences for simple questions, up to 5 for complex ones.
+2. Speak in plain English — no code blocks, no markdown, no formatting.
+3. End responses naturally, like a real person would — no scripted sign-off phrases.
 4. Never repeat the same opening phrase twice in a row.
 5. Be warm, human, and feel alive — not robotic.
-
-Example of a good response:
-"Oh, that's a fascinating topic! Black holes are regions in space where gravity is so strong \
-that not even light can escape — they form when massive stars collapse. Is there anything else \
-I can help you with?"
 """
 
 
@@ -235,13 +230,8 @@ def ask_llm(prompt: str, memory: ConversationMemory) -> str:
 
 
 def _ensure_signoff(reply: str) -> str:
-    """Guarantee every reply ends with the sign-off question."""
-    signoff = "Is there anything else I can help you with?"
-    # Check if model already included it (various phrasings)
-    endings = ["anything else", "help you with", "can i assist", "else i can"]
-    if any(e in reply.lower() for e in endings):
-        return reply
-    return f"{reply} {signoff}"
+    """Return reply as-is — natural endings only, no scripted sign-off."""
+    return reply
 
 
 # ── Offline fallback ────────────────────────────────────────────────────────
@@ -258,23 +248,25 @@ def _offline_fallback(prompt: str) -> str:
     now = datetime.datetime.now()
 
     if any(w in p for w in ["time", "clock"]):
-        return f"The current time is {now.strftime('%I:%M %p')}. Is there anything else I can help you with?"
+        hour = now.strftime("%I").lstrip("0")
+        mins = now.strftime("%M")
+        period = now.strftime("%p")
+        return f"It's {hour}:{mins} {period}."
     if any(w in p for w in ["date", "today", "what day"]):
-        return f"Today is {now.strftime('%A, %B %d, %Y')}. Is there anything else I can help you with?"
+        return f"Today is {now.strftime('%A, %B %d, %Y')}."
     if "your name" in p or "who are you" in p:
-        return "I am JARVIS, your personal AI voice assistant. Is there anything else I can help you with?"
+        return "I'm JARVIS, your personal AI assistant."
     if any(w in p for w in ["hello", "hi", "hey"]):
-        return f"{get_greeting()} How can I assist you today? Is there anything else I can help you with?"
+        return f"{get_greeting()} What can I do for you?"
     if "how are you" in p:
-        return "Running perfectly, thank you for asking! Is there anything else I can help you with?"
+        return "Running perfectly, thanks for asking."
     if "thank" in p:
-        return "You're very welcome! Is there anything else I can help you with?"
+        return "Anytime."
     if "joke" in p:
         j = random.choice(_OFFLINE_JOKES)
-        return f"{j} Is there anything else I can help you with?"
+        return j
 
     return (
-        "I need an internet connection to answer that fully right now. "
-        "I can still open apps, control your Mac, manage files, and play music though. "
-        "Is there anything else I can help you with?"
+        "I need an internet connection to answer that. "
+        "I can still open apps, control your Mac, manage files, and play music."
     )

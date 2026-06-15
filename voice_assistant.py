@@ -144,8 +144,7 @@ def takeCommand():
         return statement
 
 
-print("Loading your AI personal assistant JARVIS-One")
-speak("Loading your AI personal assistant JARVIS-One")
+print("[JARVIS] Starting up...")
 wishMe()
 
 # ── Post-speak() module setup ─────────────────────────────────────────────────
@@ -173,14 +172,16 @@ else:
 
 if __name__ == '__main__':
     while True:
-        speak("How can I help you now?")
         statement = takeCommand().lower()
         if statement == "None":
             continue
 
-        if "good bye" in statement or "ok bye" in statement or "stop" in statement:
-            speak('your personal assistant JARVIS-one is shutting down, Good bye')
-            print('your personal assistant JARVIS-one is shutting down, Good bye')
+        # ── Sleep / Stop commands ─────────────────────────────────────────────
+        if any(p in statement for p in [
+            "sleep jarvis", "jarvis sleep", "goodbye jarvis", "bye jarvis",
+            "good bye", "ok bye", "shut down jarvis", "jarvis quit", "stop jarvis"
+        ]):
+            speak("Going to sleep. Call me whenever you need me.")
             break
 
         elif 'open youtube' in statement:
@@ -214,9 +215,71 @@ if __name__ == '__main__':
                 speak("An error occurred while searching Wikipedia")
                 print(e)
 
-        elif 'time' in statement:
-            strTime = datetime.datetime.now().strftime("%H:%M:%S")
-            speak(f"the time is {strTime}")
+        # ── Real-time: Time ───────────────────────────────────────────────────
+        elif any(p in statement for p in ['what time', 'current time', "what's the time", 'tell me the time']):
+            now = datetime.datetime.now()
+            hour = now.strftime("%I").lstrip("0")
+            mins = now.strftime("%M")
+            period = now.strftime("%p")
+            if mins == "00":
+                speak(f"It's {hour} {period}.")
+            else:
+                speak(f"It's {hour} {mins} {period}.")
+
+        # ── Real-time: Calendar / Date ────────────────────────────────────────
+        elif any(p in statement for p in ['calendar', 'what day', 'what date', "today's date", 'schedule']):
+            now = datetime.datetime.now()
+            day   = now.strftime("%A")
+            date  = now.strftime("%B %d, %Y")
+            # Try to pull today's events from macOS Calendar via AppleScript
+            try:
+                script = '''
+                tell application "Calendar"
+                    set todayStart to current date
+                    set time of todayStart to 0
+                    set todayEnd to todayStart + (86399)
+                    set eventList to ""
+                    repeat with c in every calendar
+                        repeat with e in every event of c
+                            set s to start date of e
+                            if s >= todayStart and s <= todayEnd then
+                                set eventList to eventList & summary of e & ", "
+                            end if
+                        end repeat
+                    end repeat
+                    return eventList
+                end tell
+                '''
+                result = subprocess.run(
+                    ["osascript", "-e", script],
+                    capture_output=True, text=True, timeout=8
+                ).stdout.strip().rstrip(", ")
+                if result:
+                    speak(f"Today is {day}, {date}. You have these events: {result}.")
+                else:
+                    speak(f"Today is {day}, {date}. Your calendar looks clear today.")
+            except Exception:
+                speak(f"Today is {day}, {date}.")
+
+        # ── Real-time: Temperature / Weather ──────────────────────────────────
+        elif any(p in statement for p in [
+            'temperature', 'weather', "how hot", "how cold", "what's the weather",
+            'weather today', 'current weather'
+        ]):
+            try:
+                # Detect city from IP
+                loc = requests.get("https://ipinfo.io/json", timeout=5).json()
+                city    = loc.get("city", "your location")
+                country = loc.get("country", "")
+                # Fetch weather from wttr.in (free, no API key)
+                w = requests.get(
+                    f"https://wttr.in/{city}?format=%t+%C",
+                    timeout=5
+                ).text.strip()
+                speak(f"Right now in {city}, {country}, it's {w}.")
+            except Exception as e:
+                speak("I couldn't fetch the weather right now. Check your internet connection.")
+                print(e)
 
         elif "camera" in statement or "take a photo" in statement:
             try:
