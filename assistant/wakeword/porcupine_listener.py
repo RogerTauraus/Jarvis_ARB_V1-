@@ -74,43 +74,70 @@ class _OpenWakeWordEngine:
         from openwakeword.model import Model
         import numpy as np
 
-        # Load pre-trained model (downloads ~5 MB on first run)
+        # Load model first (may take a few seconds)
         oww_model = Model(
             wakeword_models=[self._model_name],
             inference_framework="onnx"
         )
 
-        pa = self._pyaudio.PyAudio()
-        stream = pa.open(
-            rate=self.SAMPLE_RATE,
-            channels=1,
-            format=self.FORMAT_INT16,
-            input=True,
-            frames_per_buffer=self.CHUNK
-        )
+        pa     = self._pyaudio.PyAudio()
+        stream = None
 
-        logger.info(f"[OpenWakeWord] Listening for '{self._model_name}'...")
         print(f"[JARVIS] Wake-word engine active — say 'Hey Jarvis' to activate.")
 
         try:
             while self._running:
+                # ── Paused: close stream so takeCommand() can use the mic ──
                 if getattr(self, '_paused', False):
-                    time.sleep(0.05)   # idle while mic is in use by takeCommand
+                    if stream is not None:
+                        try:
+                            stream.stop_stream()
+                            stream.close()
+                        except Exception:
+                            pass
+                        stream = None
+                    time.sleep(0.05)
                     continue
-                raw = stream.read(self.CHUNK, exception_on_overflow=False)
-                audio = np.frombuffer(raw, dtype=np.int16)
-                predictions = oww_model.predict(audio)
 
-                score = predictions.get(self._model_name, 0.0)
+                # ── Active: open stream if not already open ────────────────
+                if stream is None:
+                    try:
+                        stream = pa.open(
+                            rate=self.SAMPLE_RATE,
+                            channels=1,
+                            format=self.FORMAT_INT16,
+                            input=True,
+                            frames_per_buffer=self.CHUNK
+                        )
+                    except Exception as e:
+                        logger.warning(f"[OpenWakeWord] Audio open failed: {e}")
+                        time.sleep(0.5)
+                        continue
+
+                # ── Read and predict ───────────────────────────────────────
+                try:
+                    raw = stream.read(self.CHUNK, exception_on_overflow=False)
+                except Exception:
+                    time.sleep(0.1)
+                    continue
+
+                audio       = np.frombuffer(raw, dtype=np.int16)
+                predictions = oww_model.predict(audio)
+                score       = predictions.get(self._model_name, 0.0)
+
                 if score >= self.SCORE_THRESHOLD:
                     logger.info(f"[OpenWakeWord] Wake word detected (score={score:.2f})")
                     self._on_wake()
-                    # Brief pause to avoid double-trigger
                     time.sleep(1.0)
-                    oww_model.reset()   # clear internal buffer
+                    oww_model.reset()
+
         finally:
-            stream.stop_stream()
-            stream.close()
+            if stream is not None:
+                try:
+                    stream.stop_stream()
+                    stream.close()
+                except Exception:
+                    pass
             pa.terminate()
 
     def stop(self):
