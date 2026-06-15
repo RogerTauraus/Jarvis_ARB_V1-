@@ -124,24 +124,39 @@ def wishMe():
 
 
 def takeCommand():
+    # Pause wake-word listener so both don't fight over the microphone
+    try:
+        _wake_listener.pause()
+    except Exception:
+        pass
+
     r = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("Listening...")
-        r.pause_threshold = 1
-        audio = r.listen(source)
+    statement = "None"
+    try:
+        with sr.Microphone() as source:
+            print("Listening...")
+            r.adjust_for_ambient_noise(source, duration=0.3)
+            r.pause_threshold = 1
+            audio = r.listen(source, timeout=8, phrase_time_limit=12)
         try:
             statement = r.recognize_google(audio, language='en-in')
             print(f"user said: {statement}\n")
         except sr.UnknownValueError:
-            speak("Pardon me, please say that again")
-            return "None"
-        except sr.RequestError as e:
-            speak("Could not request results; check your internet connection")
-            return "None"
-        except Exception as e:
-            speak("Pardon me, please say that again")
-            return "None"
-        return statement
+            speak("Pardon me, please say that again.")
+        except sr.RequestError:
+            speak("I can't reach the speech service. Check your internet connection.")
+        except Exception:
+            speak("Pardon me, please say that again.")
+    except Exception as e:
+        print(f"[Mic error] {e}")
+
+    # Always resume the wake-word listener
+    try:
+        _wake_listener.resume()
+    except Exception:
+        pass
+
+    return statement
 
 
 print("[JARVIS] Starting up...")

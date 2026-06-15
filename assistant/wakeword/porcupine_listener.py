@@ -94,6 +94,9 @@ class _OpenWakeWordEngine:
 
         try:
             while self._running:
+                if getattr(self, '_paused', False):
+                    time.sleep(0.05)   # idle while mic is in use by takeCommand
+                    continue
                 raw = stream.read(self.CHUNK, exception_on_overflow=False)
                 audio = np.frombuffer(raw, dtype=np.int16)
                 predictions = oww_model.predict(audio)
@@ -113,8 +116,17 @@ class _OpenWakeWordEngine:
     def stop(self):
         self._running = False
 
+    def pause(self):
+        """Temporarily stop reading audio — releases mic for takeCommand()."""
+        self._paused = True
+
+    def resume(self):
+        """Resume listening after takeCommand() is done."""
+        self._paused = False
+
     def start(self):
         self._running = True
+        self._paused  = False
 
 
 # ── Porcupine engine ───────────────────────────────────────────────────────────
@@ -143,6 +155,9 @@ class _PorcupineEngine:
         logger.info(f"[Porcupine] Listening for '{self._keyword}'...")
         try:
             while self._running:
+                if getattr(self, '_paused', False):
+                    time.sleep(0.05)
+                    continue
                 pcm = recorder.read()
                 if porcupine.process(pcm) >= 0:
                     logger.info("[Porcupine] Wake word detected!")
@@ -155,8 +170,15 @@ class _PorcupineEngine:
     def stop(self):
         self._running = False
 
+    def pause(self):
+        self._paused = True
+
+    def resume(self):
+        self._paused = False
+
     def start(self):
         self._running = True
+        self._paused  = False
 
 
 # ── Public interface ───────────────────────────────────────────────────────────
@@ -221,6 +243,16 @@ class WakeWordListener:
         if self._thread:
             self._thread.join(timeout=3)
         print(f"[JARVIS] Wake-word listener stopped.")
+
+    def pause(self):
+        """Pause mic reading so takeCommand() can use the microphone."""
+        if self._engine:
+            self._engine.pause()
+
+    def resume(self):
+        """Resume mic reading after takeCommand() releases the microphone."""
+        if self._engine:
+            self._engine.resume()
 
     @property
     def engine_name(self) -> str:
