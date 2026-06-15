@@ -20,7 +20,7 @@ from elevenlabs.client import ElevenLabs
 from assistant.ai.llm_engine import ask_llm
 from assistant.ai.memory import ConversationMemory
 from assistant.ai.internet_tools import is_online, web_search
-from assistant.automation.apps import open_app, close_app, switch_app
+from assistant.automation.apps import open_app, close_app, switch_app, open_document, refresh_index
 from assistant.automation.system import (
     set_volume, volume_up, volume_down, mute, unmute,
     set_brightness, sleep_mac, lock_mac, shutdown_mac, restart_mac
@@ -393,54 +393,44 @@ if __name__ == '__main__':
                     "Sorry, I was unable to send the email. Please check your credentials.")
                 print(e)
 
-        # ── Feature 3: macOS App Management ──────────────────────────────────
-        elif statement.startswith('open ') and any(w in statement for w in [
-            # Browsers
-            'safari', 'chrome', 'firefox', 'brave', 'edge', 'opera',
-            # Dev tools
-            'vs code', 'vscode', 'visual studio', 'terminal', 'iterm',
-            'xcode', 'android studio', 'pycharm', 'webstorm', 'cursor',
-            'github desktop', 'sourcetree', 'postman', 'sequel pro',
-            # System
-            'finder', 'activity monitor', 'system preferences', 'system settings',
-            'app store', 'calculator', 'preview', 'textedit', 'console',
-            # Communication
-            'messages', 'mail', 'facetime', 'zoom', 'slack', 'discord',
-            'whatsapp', 'telegram', 'signal', 'teams', 'skype',
-            # Social
-            'instagram', 'twitter', 'x app', 'reddit',
-            # Media & Music
-            'spotify', 'music', 'apple music', 'podcasts', 'vlc',
-            'photos', 'quicktime', 'iMovie', 'garage band', 'garage',
-            # Productivity
-            'notes', 'calendar', 'reminders', 'maps', 'clock',
-            'notion', 'obsidian', 'bear', 'things', 'craft',
-            'word', 'excel', 'powerpoint', 'outlook', 'onenote',
-            'pages', 'numbers', 'keynote',
-            # Design
-            'figma', 'sketch', 'photoshop', 'illustrator', 'affinity',
-        ]):
-            app_name = statement.replace('open', '').strip()
-            result = open_app(app_name)
-            speak(result)
+        # ── Feature 3: Universal App & Document Launcher ──────────────────────
+        # No hardcoded list — dynamically finds ANY app or file on this Mac.
+
+        elif any(statement.startswith(p) for p in ['open ', 'launch ', 'start ']):
+            # Extract the target name
+            query = (statement
+                     .replace('open ', '', 1)
+                     .replace('launch ', '', 1)
+                     .replace('start ', '', 1)
+                     .strip())
+            if not query:
+                speak("What would you like me to open?")
+            else:
+                result = open_app(query)
+                # If app not found, try as a document
+                if "couldn't find" in result.lower():
+                    doc_result = open_document(query)
+                    result = doc_result if "couldn't find" not in doc_result.lower() else result
+                speak(result)
+
+        elif 'open document' in statement or 'open file' in statement:
+            query = (statement
+                     .replace('open document', '')
+                     .replace('open file', '')
+                     .strip())
+            speak(open_document(query))
 
         elif statement.startswith('close ') and 'close window' not in statement:
             app_name = statement.replace('close', '').strip()
-            result = close_app(app_name)
-            speak(result)
+            speak(close_app(app_name))
 
         elif statement.startswith('switch to ') or statement.startswith('go to '):
             app_name = statement.replace('switch to', '').replace('go to', '').strip()
-            result = switch_app(app_name)
-            speak(result)
+            speak(switch_app(app_name))
 
-        elif 'restart' in statement and any(a in statement for a in [
-            'safari', 'chrome', 'spotify', 'vscode', 'terminal'
-        ]):
-            from assistant.automation.apps import restart_app
-            app_name = statement.replace('restart', '').strip()
-            result = restart_app(app_name)
-            speak(result)
+        elif 'rescan apps' in statement or 'refresh apps' in statement or 'scan apps' in statement:
+            speak("Rescanning your system for apps and documents, one moment.")
+            speak(refresh_index())
 
         # ── Feature 3: System Controls ────────────────────────────────────────
         elif 'volume' in statement:
