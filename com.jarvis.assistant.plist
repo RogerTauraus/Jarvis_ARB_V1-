@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Unique identifier for this LaunchAgent -->
+    <key>Label</key>
+    <string>com.jarvis.assistant</string>
+
+    <!-- Command to run -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Jarvis_v1/launch_jarvis.sh</string>
+    </array>
+
+    <!-- Working directory -->
+    <key>WorkingDirectory</key>
+    <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Jarvis_v1</string>
+
+    <!-- Log output -->
+    <key>StandardOutPath</key>
+    <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Jarvis_v1/logs/jarvis.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Jarvis_v1/logs/jarvis_error.log</string>
+
+    <!-- Start at login — set to false if you want manual control only -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <!-- Restart if it crashes (set to true once stable) -->
+    <key>KeepAlive</key>
+    <false/>
+
+    <!-- Wait 3s before restarting on crash -->
+    <key>ThrottleInterval</key>
+    <integer>3</integer>
+
+    <!-- Give it access to user session (needed for audio/mic) -->
+    <key>SessionCreate</key>
+    <true/>
+
+    <!-- Environment variables passed to JARVIS -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Library/Frameworks/Python.framework/Versions/3.13/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/ashwinrogerbaxla</string>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>

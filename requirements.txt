@@ -1,0 +1,14 @@
+SpeechRecognition
+pyaudio
+groq
+google-genai
+openai
+elevenlabs
+python-dotenv
+requests
+wikipedia
+pyttsx3
+openwakeword
+onnxruntime
+numpy
+rumps
