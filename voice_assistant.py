@@ -21,6 +21,21 @@ from assistant.ai.llm_engine import ask_llm
 from assistant.ai.memory import ConversationMemory
 from assistant.ai.internet_tools import is_online, web_search
 from assistant.automation.apps import open_app, close_app, switch_app, open_document, refresh_index
+from assistant.automation.browser import (
+    youtube_play, youtube_toggle_pause, youtube_next, youtube_fullscreen,
+    youtube_mute, youtube_volume, browser_search, browser_go_to,
+    browser_go_back, browser_go_forward, browser_refresh, browser_scroll,
+    browser_scroll_top, browser_scroll_bottom, browser_new_tab, browser_close_tab,
+    browser_get_page_title,
+)
+from assistant.automation.app_controls import (
+    send_imessage, open_messages_chat,
+    create_note, append_to_latest_note,
+    add_reminder, list_reminders,
+    open_maps, get_directions,
+    facetime_call, facetime_audio_call,
+    compose_mail, add_calendar_event,
+)
 from assistant.automation.system import (
     set_volume, volume_up, volume_down, mute, unmute,
     set_brightness, sleep_mac, lock_mac, shutdown_mac, restart_mac
@@ -199,20 +214,200 @@ if __name__ == '__main__':
             speak("Going to sleep. Call me whenever you need me.")
             break
 
-        elif 'open youtube' in statement:
-            webbrowser.open_new_tab("https://www.youtube.com")
-            speak("youtube is open now")
-            time.sleep(5)
+        # ── YouTube smart commands (search & play, pause, next, fullscreen) ──
+        elif any(p in statement for p in ['play', 'watch', 'search']) and 'youtube' in statement:
+            # "play X on youtube" / "watch X youtube" / "search youtube for X"
+            query = (
+                statement
+                .replace('play', '').replace('watch', '').replace('search', '')
+                .replace('for', '').replace('on youtube', '').replace('youtube', '')
+                .strip()
+            )
+            if query:
+                speak(f"Searching YouTube for {query}, one moment.")
+                speak(youtube_play(query))
+            else:
+                browser_go_to("https://www.youtube.com")
+                speak("YouTube is open.")
 
+        elif 'open youtube' in statement:
+            browser_go_to("https://www.youtube.com")
+            speak("YouTube is open.")
+
+        elif 'pause video' in statement or 'pause youtube' in statement or 'play video' in statement:
+            speak(youtube_toggle_pause())
+
+        elif 'next video' in statement or 'skip video' in statement or 'skip youtube' in statement:
+            speak(youtube_next())
+
+        elif 'youtube fullscreen' in statement or 'fullscreen youtube' in statement:
+            speak(youtube_fullscreen())
+
+        elif 'mute youtube' in statement or 'unmute youtube' in statement:
+            speak(youtube_mute())
+
+        # ── Google & web search ──────────────────────────────────────────────
         elif 'open google' in statement:
-            webbrowser.open_new_tab("https://www.google.com")
-            speak("Google chrome is open now")
-            time.sleep(5)
+            browser_go_to("https://www.google.com")
+            speak("Google is open.")
+
+        elif any(p in statement for p in ['search google', 'google search', 'search the web', 'search online']) and 'youtube' not in statement:
+            query = (
+                statement
+                .replace('search google for', '').replace('search google', '')
+                .replace('google search', '').replace('search the web for', '')
+                .replace('search online for', '').replace('search online', '')
+                .strip()
+            )
+            speak(browser_search(query, 'google'))
 
         elif 'open gmail' in statement:
-            webbrowser.open_new_tab("https://gmail.com")
-            speak("Google Mail open now")
-            time.sleep(5)
+            browser_go_to("https://gmail.com")
+            speak("Gmail is open.")
+
+        # ── General browser controls ─────────────────────────────────────────
+        elif 'scroll down' in statement:
+            speak(browser_scroll('down'))
+
+        elif 'scroll up' in statement:
+            speak(browser_scroll('up'))
+
+        elif 'scroll to top' in statement or 'go to top' in statement:
+            speak(browser_scroll_top())
+
+        elif 'scroll to bottom' in statement or 'go to bottom' in statement:
+            speak(browser_scroll_bottom())
+
+        elif statement in ('go back', 'browser back', 'back') or 'go back in browser' in statement:
+            speak(browser_go_back())
+
+        elif 'go forward' in statement or 'browser forward' in statement:
+            speak(browser_go_forward())
+
+        elif 'refresh page' in statement or 'reload page' in statement or 'refresh browser' in statement:
+            speak(browser_refresh())
+
+        elif 'new tab' in statement:
+            url_match = ''
+            if 'open' in statement:
+                url_match = statement.replace('open new tab', '').replace('new tab', '').replace('open', '').strip()
+            speak(browser_new_tab(url_match))
+
+        elif 'close tab' in statement:
+            speak(browser_close_tab())
+
+        elif 'go to' in statement and any(tld in statement for tld in ['.com', '.org', '.net', '.io', '.co', '.in']):
+            url = statement.replace('go to', '').replace('open', '').strip()
+            speak(browser_go_to(url))
+
+        # ── iMessage ─────────────────────────────────────────────────────────
+        elif any(p in statement for p in ['send a message to', 'text', 'send message to', 'message to']):
+            # "send message to John saying hey" / "text John hey"
+            import re
+            m = re.search(r'(?:send (?:a )?message to|text|message to)\s+(.+?)\s+(?:saying|that)\s+(.+)', statement)
+            if m:
+                contact, msg = m.group(1).strip(), m.group(2).strip()
+                speak(f"Sending message to {contact}.")
+                speak(send_imessage(contact, msg))
+            else:
+                # Just open Messages
+                contact = (
+                    statement
+                    .replace('send a message to', '').replace('send message to', '')
+                    .replace('text', '').replace('message to', '').strip()
+                )
+                if contact:
+                    speak(open_messages_chat(contact))
+                else:
+                    speak("Who would you like to message?")
+
+        # ── Notes ────────────────────────────────────────────────────────────
+        elif any(p in statement for p in ['create a note', 'make a note', 'add to notes', 'write a note']):
+            content = (
+                statement
+                .replace('create a note', '').replace('make a note', '')
+                .replace('add to notes', '').replace('write a note', '')
+                .lstrip(' saying that').strip()
+            )
+            if not content:
+                speak("What should I write in the note?")
+                content = takeCommand()
+            speak(create_note('JARVIS', content))
+
+        elif 'add to my note' in statement or 'append to note' in statement:
+            content = statement.replace('add to my note', '').replace('append to note', '').strip()
+            speak(append_to_latest_note(content))
+
+        # ── Reminders ────────────────────────────────────────────────────────
+        elif any(p in statement for p in ['remind me', 'set a reminder', 'add a reminder', 'add reminder']):
+            task = (
+                statement
+                .replace('remind me to', '').replace('remind me', '')
+                .replace('set a reminder to', '').replace('set a reminder', '')
+                .replace('add a reminder to', '').replace('add a reminder', '')
+                .replace('add reminder', '').strip()
+            )
+            if not task:
+                speak("What should I remind you about?")
+                task = takeCommand()
+            speak(add_reminder(task))
+
+        elif any(p in statement for p in ['what are my reminders', "show my reminders", 'read my reminders', 'list reminders']):
+            speak(list_reminders())
+
+        # ── Maps & Directions ────────────────────────────────────────────────
+        elif any(p in statement for p in ['directions to', 'navigate to', 'how do i get to', 'take me to']):
+            dest = (
+                statement
+                .replace('directions to', '').replace('navigate to', '')
+                .replace('how do i get to', '').replace('take me to', '').strip()
+            )
+            mode = 'w' if 'walk' in statement else 'd'
+            speak(get_directions(dest, mode))
+
+        elif 'show' in statement and 'maps' in statement or 'open maps' in statement:
+            location = (
+                statement
+                .replace('show me', '').replace('on maps', '')
+                .replace('open maps', '').replace('maps', '').strip()
+            )
+            if location:
+                speak(open_maps(location))
+            else:
+                open_maps('')
+                speak("Maps is open.")
+
+        # ── FaceTime ─────────────────────────────────────────────────────────
+        elif any(p in statement for p in ['facetime', 'video call', 'call via facetime']):
+            contact = (
+                statement
+                .replace('facetime', '').replace('video call', '')
+                .replace('call via facetime', '').replace('call', '').strip()
+            )
+            speak(facetime_call(contact) if contact else "Who would you like to FaceTime?")
+
+        elif 'audio call' in statement or 'phone call' in statement:
+            contact = (
+                statement
+                .replace('audio call', '').replace('phone call', '')
+                .replace('call', '').strip()
+            )
+            speak(facetime_audio_call(contact) if contact else "Who would you like to call?")
+
+        # ── Mail compose ─────────────────────────────────────────────────────
+        elif 'compose email' in statement or 'write email' in statement or 'draft email' in statement:
+            import re
+            m = re.search(r'(?:to|for)\s+([\w\s]+?)(?:\s+about|\s+regarding|$)', statement)
+            to_addr = m.group(1).strip() if m else ''
+            speak(compose_mail(to_addr))
+
+        # ── Calendar events ───────────────────────────────────────────────────
+        elif any(p in statement for p in ['add event', 'add to calendar', 'schedule a', 'create event']):
+            speak("What should I call the event?")
+            title = takeCommand()
+            speak("What date and time?")
+            start_time = takeCommand()
+            speak(add_calendar_event(title, start_time))
 
         elif 'wikipedia' in statement:
             speak('Searching Wikipedia...')
