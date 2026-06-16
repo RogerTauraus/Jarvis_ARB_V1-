@@ -26,7 +26,8 @@ from assistant.automation.browser import (
     youtube_mute, youtube_volume, browser_search, browser_go_to,
     browser_go_back, browser_go_forward, browser_refresh, browser_scroll,
     browser_scroll_top, browser_scroll_bottom, browser_new_tab, browser_close_tab,
-    browser_get_page_title,
+    browser_get_page_title, click_link, click_search_result, click_button,
+    type_in_field, press_enter_on_page, get_page_links,
 )
 from assistant.automation.app_controls import (
     send_imessage, open_messages_chat,
@@ -35,6 +36,10 @@ from assistant.automation.app_controls import (
     open_maps, get_directions,
     facetime_call, facetime_audio_call,
     compose_mail, add_calendar_event,
+)
+from assistant.automation.window_control import (
+    handle_in_window_command, get_window_context, extract_ordinal,
+    get_frontmost_app, is_browser_active,
 )
 from assistant.automation.system import (
     set_volume, volume_up, volume_down, mute, unmute,
@@ -213,6 +218,35 @@ if __name__ == '__main__':
         ]):
             speak("Going to sleep. Call me whenever you need me.")
             break
+
+        # ── Contextual in-window commands (highest priority after sleep) ──────
+        # Handles: "open first link", "click second result", "type X",
+        # "click Sign In", "press enter", "what links are on this page", etc.
+        # Routes to the correct handler based on whatever window is active.
+        elif any(p in statement for p in [
+            "open the first", "open the second", "open the third", "open the fourth", "open the fifth",
+            "click the first", "click the second", "click the third",
+            "open first link", "open second link", "open first result", "open second result",
+            "click first", "click second", "click third",
+            "select the first", "select the second",
+            "go to the first", "go to the second",
+            "open this link", "click this link",
+            "list links", "what links", "show links",
+            "page title", "what page", "current page",
+            "press enter", "hit enter", "submit the form",
+        ]) or (
+            statement.startswith("type ") and is_browser_active()
+        ) or (
+            statement.startswith("click ") and "link" not in statement
+            and "app" not in statement and is_browser_active()
+        ) or (
+            statement.startswith("write ") and is_browser_active()
+        ):
+            ctx_response = handle_in_window_command(statement)
+            if ctx_response:
+                speak(ctx_response)
+            else:
+                speak("I'm not sure what to do in this window. Try saying 'open first link' or 'click sign in'.")
 
         # ── YouTube smart commands (search & play, pause, next, fullscreen) ──
         elif any(p in statement for p in ['play', 'watch', 'search']) and 'youtube' in statement:
