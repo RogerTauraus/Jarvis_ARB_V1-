@@ -41,6 +41,14 @@ from assistant.automation.window_control import (
     handle_in_window_command, get_window_context, extract_ordinal,
     get_frontmost_app, is_browser_active,
 )
+from assistant.automation.system_settings import (
+    open_setting, toggle_bluetooth, bluetooth_connect, bluetooth_disconnect,
+    list_bluetooth_devices, get_bluetooth_state,
+    toggle_wifi, get_wifi_state, get_current_wifi, connect_wifi,
+)
+from assistant.automation.intent_router import (
+    split_compound, route_with_llm, execute_action, llm_parse_actions,
+)
 from assistant.automation.system import (
     set_volume, volume_up, volume_down, mute, unmute,
     set_brightness, sleep_mac, lock_mac, shutdown_mac, restart_mac
@@ -218,6 +226,21 @@ if __name__ == '__main__':
         ]):
             speak("Going to sleep. Call me whenever you need me.")
             break
+
+        # ── Compound commands: "do X and then do Y" ────────────────────────
+        # e.g. "open Chrome and then search Star Wars and then open the first result"
+        elif len(split_compound(statement)) > 1:
+            sub_commands = split_compound(statement)
+            for i, sub in enumerate(sub_commands):
+                # Use LLM intent router for each sub-command
+                result = route_with_llm(sub)
+                if result:
+                    speak(result)
+                else:
+                    # Fall back to plain LLM
+                    speak(ask_llm(sub, _memory))
+                if i < len(sub_commands) - 1:
+                    time.sleep(2.5)  # Wait for each step to complete
 
         # ── Contextual in-window commands (highest priority after sleep) ──────
         # Handles: "open first link", "click second result", "type X",
@@ -775,9 +798,76 @@ if __name__ == '__main__':
             if path_response != "None":
                 speak(_file_manager.delete_file(path_response.strip()))
 
-        # ── Feature 1: Web search (no browser) ───────────────────────────────
+        # ── Settings navigation (contextual) ────────────────────────────────
+        # "open Bluetooth settings", "go to display settings", "open WiFi settings"
+        elif any(p in statement for p in [
+            'settings', 'preferences', 'system settings'
+        ]) and any(p in statement for p in [
+            'bluetooth', 'wifi', 'wi-fi', 'display', 'sound', 'battery',
+            'notifications', 'privacy', 'security', 'appearance', 'dark mode',
+            'keyboard', 'trackpad', 'mouse', 'network', 'storage', 'language',
+            'accessibility', 'siri', 'focus', 'screen time', 'wallpaper',
+            'lock screen', 'touch id', 'password', 'airdrop', 'sharing',
+            'general', 'updates', 'software update', 'energy', 'brightness',
+            'control center', 'control centre', 'desktop'
+        ]):
+            setting_name = (
+                statement
+                .replace('open', '').replace('go to', '').replace('show me', '')
+                .replace('settings', '').replace('preferences', '')
+                .replace('system', '').replace('the', '').replace('my', '')
+                .strip()
+            )
+            speak(open_setting(setting_name))
+
+        # ── Bluetooth commands ────────────────────────────────────────────────
+        elif 'bluetooth' in statement:
+            if any(p in statement for p in ['turn on', 'switch on', 'enable', 'turn bluetooth on']):
+                speak(toggle_bluetooth('on'))
+            elif any(p in statement for p in ['turn off', 'switch off', 'disable', 'turn bluetooth off']):
+                speak(toggle_bluetooth('off'))
+            elif any(p in statement for p in ['connect to', 'connect my', 'pair with']):
+                device = (
+                    statement
+                    .replace('connect to', '').replace('connect my', '')
+                    .replace('pair with', '').replace('bluetooth', '').strip()
+                )
+                speak(bluetooth_connect(device))
+            elif any(p in statement for p in ['disconnect', 'unpair']):
+                device = (
+                    statement.replace('disconnect', '').replace('unpair', '')
+                    .replace('bluetooth', '').replace('from', '').strip()
+                )
+                speak(bluetooth_disconnect(device))
+            elif any(p in statement for p in ['list', 'show devices', 'what devices', 'my devices']):
+                speak(list_bluetooth_devices())
+            elif 'status' in statement or 'is bluetooth on' in statement:
+                speak(get_bluetooth_state())
+            else:
+                # "open bluetooth" → open settings panel
+                speak(open_setting('bluetooth'))
+
+        # ── WiFi commands ─────────────────────────────────────────────────────
+        elif any(p in statement for p in ['wifi', 'wi-fi', 'wireless']):
+            if any(p in statement for p in ['turn on', 'switch on', 'enable']):
+                speak(toggle_wifi('on'))
+            elif any(p in statement for p in ['turn off', 'switch off', 'disable']):
+                speak(toggle_wifi('off'))
+            elif any(p in statement for p in ['what network', 'which network', 'am i connected', 'connected to']):
+                speak(get_current_wifi())
+            elif 'status' in statement or 'is wifi on' in statement:
+                speak(get_wifi_state())
+            elif 'connect to' in statement:
+                network = (
+                    statement.replace('connect to', '').replace('wifi', '')
+                    .replace('wi-fi', '').replace('network', '').strip()
+                )
+                speak(connect_wifi(network))
+            else:
+                speak(open_setting('wifi'))
+
+        # ── Web search (no browser) ───────────────────────────────────────────
         elif any(p in statement for p in ['look up', 'look it up', 'what is', 'who is', 'tell me about', 'explain']):
-            # Route to LLM for direct answers — no browser
             reply = ask_llm(statement, _memory)
             speak(reply)
 
@@ -799,7 +889,13 @@ if __name__ == '__main__':
             _memory.clear()
             speak("Conversation memory cleared. Starting fresh.")
 
-        # ── Feature 1: LLM catch-all (LAST — preserves all existing routing) ─
+        # ── Generative catch-all: LLM decides what to do ─────────────────────
+        # Tries action routing first (open app, navigate, etc.)
+        # Falls back to conversation if it's a question / chat
         else:
-            reply = ask_llm(statement, _memory)
-            speak(reply)
+            action_response = route_with_llm(statement)
+            if action_response:
+                speak(action_response)
+            else:
+                reply = ask_llm(statement, _memory)
+                speak(reply)
