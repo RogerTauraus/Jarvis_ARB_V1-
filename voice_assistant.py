@@ -353,8 +353,17 @@ if __name__ == '__main__':
         elif 'close tab' in statement:
             speak(browser_close_tab())
 
-        elif 'go to' in statement and any(tld in statement for tld in ['.com', '.org', '.net', '.io', '.co', '.in']):
-            url = statement.replace('go to', '').replace('open', '').strip()
+        elif (
+            any(tld in statement for tld in ['.com', '.org', '.net', '.io', '.co', '.in', '.uk', '.gov'])
+            and any(p in statement for p in ['go to', 'open', 'navigate to', 'visit', 'take me to'])
+            and 'http' not in statement  # avoid duplicating http:// links
+        ):
+            url = (
+                statement
+                .replace('go to', '').replace('navigate to', '')
+                .replace('take me to', '').replace('visit', '')
+                .replace('open', '').strip()
+            )
             speak(browser_go_to(url))
 
         # ── iMessage ─────────────────────────────────────────────────────────

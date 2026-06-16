@@ -1,14 +1,29 @@
+# ── Core voice / speech ───────────────────────────────────────────────────────
 SpeechRecognition
-pyaudio
+PyAudio
+pyttsx3
+
+# ── AI / LLM backends ─────────────────────────────────────────────────────────
 groq
 google-genai
 openai
 elevenlabs
-python-dotenv
-requests
-wikipedia
-pyttsx3
+
+# ── Wake word engine ──────────────────────────────────────────────────────────
 openwakeword
 onnxruntime
 numpy
+
+# ── Web & search ──────────────────────────────────────────────────────────────
+requests
+wikipedia
+ddgs
+
+# ── Location / weather ────────────────────────────────────────────────────────
+geocoder
+
+# ── Config ────────────────────────────────────────────────────────────────────
+python-dotenv
+
+# ── macOS menu bar app (optional) ────────────────────────────────────────────
 rumps

@@ -201,31 +201,26 @@ def _extract_links(html: str, exclude_domains: list = None) -> list:
     return filtered
 
 
-def _google_result_urls(html: str) -> list:
+def _ddg_search_results(query: str, num: int = 10) -> list:
     """
-    Extract organic result URLs from Google search HTML.
-    Google wraps them in /url?q=... or data-href attributes.
+    Fetch real search result URLs via DuckDuckGo.
+    No CAPTCHA, no JS requirement, no rate-limits at casual usage.
+    Google blocks Python requests with a JS-only page, so DDG is the
+    reliable fallback for extracting result URLs programmatically.
+    Returns list of URLs ordered by relevance.
     """
-    # Pattern 1: /url?q=ACTUAL_URL&...  (Google redirect wrapper)
-    wrapped = re.findall(r'/url\?q=(https?://[^&"\']+)', html)
-    unwrapped = [urllib.parse.unquote(u) for u in wrapped]
-
-    # Pattern 2: direct href to non-google domains
-    direct = re.findall(
-        r'href=["\']((https?://)(?!(?:www\.)?google\.com)(?!accounts\.)(?!support\.google)[^"\'> ]+)["\']',
-        html
-    )
-    direct_links = [m[0] for m in direct]
-
-    # Merge, deduplicate, filter junk
-    combined = []
-    seen = set()
-    for u in unwrapped + direct_links:
-        u = u.split("&")[0]  # strip tracking params
-        if u not in seen and len(u) > 20:
-            seen.add(u)
-            combined.append(u)
-    return combined
+    try:
+        # Try new package name first (ddgs), fall back to old (duckduckgo_search)
+        try:
+            from ddgs import DDGS
+        except ImportError:
+            from duckduckgo_search import DDGS
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=num))
+        return [r["href"] for r in results if r.get("href")]
+    except Exception as e:
+        logger.debug(f"DDG search error: {e}")
+        return []
 
 
 # ── Link / result clicking (URL-based — no JS needed) ─────────────────────────
@@ -274,8 +269,10 @@ def click_link(index: int = 1) -> str:
 
 def click_search_result(index: int = 1) -> str:
     """
-    Click the Nth Google/Bing/DuckDuckGo result.
-    Uses 'I'm Feeling Lucky' for first result, Python HTML parse for others.
+    Click the Nth search result on the current page.
+    - Result #1: uses Google's 'I'm Feeling Lucky' (fastest, most reliable)
+    - Result #2+: uses DuckDuckGo search API to get real ranked URLs
+      (Google blocks Python HTML requests with a JS-only page)
     """
     url = get_current_url()
     if not url:
@@ -290,32 +287,40 @@ def click_search_result(index: int = 1) -> str:
         query_display = urllib.parse.unquote_plus(query_raw)
 
         if index == 1:
-            # Feeling Lucky = direct first result
+            # I'm Feeling Lucky redirects directly to the top result
             lucky = f"https://www.google.com/search?q={query_raw}&btnI=1"
             _navigate(lucky)
             return f"Opening the top result for '{query_display}'."
 
-        # For 2nd+ results: fetch HTML and parse
-        html = _fetch_html(url)
-        result_urls = _google_result_urls(html)
+        # For 2nd+ results: use DuckDuckGo to get the ranked URLs
+        result_urls = _ddg_search_results(query_display, num=index + 2)
         if len(result_urls) >= index:
             _navigate(result_urls[index - 1])
             return f"Opening result {index} for '{query_display}'."
-        return (f"I could only find {len(result_urls)} results. "
-                f"Try a smaller number.")
+        return f"I could only find {len(result_urls)} results. Try a smaller number."
 
     # ── Bing ──────────────────────────────────────────────────────────────────
     if "bing.com/search" in url:
-        html = _fetch_html(url)
-        results = re.findall(
-            r'<h2><a href="(https?://(?!www\.bing\.com)[^"]+)"', html
-        )
-        if len(results) >= index:
-            _navigate(results[index - 1])
-            return f"Opening result {index}."
-        return f"Found {len(results)} results."
+        query_m = re.search(r"[?&]q=([^&]+)", url)
+        if query_m:
+            query_display = urllib.parse.unquote_plus(query_m.group(1))
+            result_urls = _ddg_search_results(query_display, num=index + 2)
+            if len(result_urls) >= index:
+                _navigate(result_urls[index - 1])
+                return f"Opening result {index} for '{query_display}'."
+        return "Couldn't extract results from Bing."
 
-    # Generic fallback
+    # ── DuckDuckGo ────────────────────────────────────────────────────────────
+    if "duckduckgo.com" in url:
+        query_m = re.search(r"[?&]q=([^&]+)", url)
+        if query_m:
+            query_display = urllib.parse.unquote_plus(query_m.group(1))
+            result_urls = _ddg_search_results(query_display, num=index + 2)
+            if len(result_urls) >= index:
+                _navigate(result_urls[index - 1])
+                return f"Opening result {index}."
+
+    # Generic fallback for any other page
     return click_link(index)
 
 
