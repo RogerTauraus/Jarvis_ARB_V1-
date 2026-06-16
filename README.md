@@ -1,170 +1,196 @@
 # JARVIS — AI Voice Assistant for macOS
 
-> *"Something of a localised Siri."* — Inspired by Iron Man's J.A.R.V.I.S.
+Not Siri. Not Alexa. Something actually useful.
 
-A fully local, voice-activated AI assistant for macOS. Say **"Hey Jarvis"** and talk to your computer naturally — no typing, no clicking. JARVIS opens apps, controls your browser, reads your calendar, plays YouTube, sends messages, and more.
+JARVIS runs locally on your Mac, wakes up when you say **"Hey Jarvis"**, and does what you tell it — opens apps, controls your browser, plays YouTube, sends messages, toggles Bluetooth, checks the weather, reads your calendar. All by voice. No clicking required.
 
 ---
 
-## Features
+## What it can actually do
 
-### 🎙️ Voice Activation
-- Wake word: **"Hey Jarvis"** (free, fully local via OpenWakeWord)
-- Natural conversation — no robot phrases, no scripted sign-offs
-- Sleep: *"Sleep Jarvis"* / Wake: restart the assistant
+### Open anything
+Say *"Open Spotify"*, *"Open Settings"*, *"Open my resume"* — it opens it. JARVIS scans every app on your Mac at startup so there's no hardcoded list to maintain. Works with 130+ apps out of the box.
 
-### 🌐 Browser Automation (Chrome / Safari / Opera GX)
-JARVIS controls your browser in real time — no extensions needed.
+### Browser control (no clicking)
+Works with Chrome, Safari, Opera GX.
 
-| Say | What happens |
-|-----|-------------|
-| *"Open Google"* | Launches Chrome and opens Google |
-| *"Open [website].com"* | Navigates directly to any URL |
-| *"Search Google for quantum computing"* | Opens search results |
-| *"Play Interstellar trailer on YouTube"* | Searches and auto-plays |
-| **`"Open the first link"`** | Clicks the 1st visible link on the page |
-| **`"Open the second result"`** | Clicks the 2nd search result |
-| **`"Click Sign In"`** | Clicks any button/link by its text |
-| **`"Type hello in the search box"`** | Types into the active text field |
-| *"Press enter"* | Submits the focused form |
-| *"Scroll down / up"* | Scrolls the current page |
-| *"Go back / forward"* | Browser history navigation |
-| *"Refresh page"* | Reloads the current tab |
-| *"New tab"* / *"Close tab"* | Tab management |
-| *"Pause video"* / *"Next video"* | YouTube playback control |
-| *"YouTube fullscreen"* | Toggle fullscreen |
+```
+"Open Google"                         → opens Google in Chrome
+"Search Star Wars on Google"          → searches and shows results
+"Play Interstellar trailer on YouTube"→ searches and auto-plays it
+"Open the first link"                 → clicks link #1 on whatever page is open
+"Open the second result"              → clicks search result #2
+"Scroll down" / "Go back"            → exactly what it sounds like
+"New tab" / "Close tab"              → tab management
+```
 
-### 📱 App Launcher — Fully Dynamic
-No hardcoded list. JARVIS scans **every app on your Mac** at startup.
+### Compound commands
+JARVIS understands multi-step instructions in one go:
 
-| Say | What happens |
-|-----|-------------|
-| *"Open Settings"* | Opens System Settings |
-| *"Open Spotify"* | Launches Spotify |
-| *"Open FL Studio"* | Launches FL Studio 2025 |
-| *"Launch Steam"* | Opens Steam |
-| *"Open my resume"* | Finds & opens file from Desktop/Documents/Downloads |
-| *"Rescan apps"* | Refreshes index after installing new apps |
+> *"Open Chrome and then search Star Wars and then open the first result"*
 
-### 💬 Native App Control (AppleScript)
-| Command | App |
-|---------|-----|
-| *"Text John saying I'll be late"* | Messages — sends iMessage |
-| *"Create a note buy groceries"* | Notes — creates new note |
-| *"Remind me to call mum"* | Reminders — adds task |
-| *"What are my reminders?"* | Reminders — reads aloud |
-| *"Directions to Mumbai airport"* | Maps — driving route |
-| *"FaceTime Mum"* | FaceTime — starts video call |
-| *"Compose email to boss"* | Mail — opens compose window |
-| *"Add event to calendar"* | Calendar — creates event |
+It breaks that into 3 steps and does all of them in sequence.
 
-### ⏱️ Real-Time Info
-| Say | Returns |
-|-----|---------|
-| *"What time is it?"* | "It's 3:23 PM" |
-| *"What day is it?"* | "Today is Monday, June 16" |
-| *"What's the weather?"* | "37°C, Haze in Patna" (auto-detects location) |
-| *"What's on my calendar?"* | Reads today's events from macOS Calendar |
+### Settings navigation
+Goes directly to the right panel — no hunting through menus.
 
-### 🔊 System Controls
+```
+"Open Bluetooth settings"    → jumps to Bluetooth panel
+"Open Display settings"      → jumps to Displays
+"Open WiFi settings"         → jumps to Wi-Fi
+"Open Notification settings" → you get the idea
+```
+Works for 30+ system settings panels.
+
+### Bluetooth & WiFi
+```
+"Turn on Bluetooth"          → turns it on
+"Turn off Bluetooth"         → turns it off
+"Connect to AirPods"         → connects to your paired device by name
+"Turn off WiFi"              → kills WiFi
+"What network am I on?"      → tells you
+```
+
+### Native apps — all by voice
+```
+"Text John saying I'll be late"         → sends iMessage
+"Create a note buy groceries"           → creates note in Notes
+"Remind me to call mum"                 → adds to Reminders
+"What are my reminders?"                → reads them out
+"Directions to the airport"             → opens Maps with route
+"FaceTime Mum"                          → starts a FaceTime call
+"Compose email to my boss"              → opens Mail compose window
+"Add event to calendar"                 → asks you the details and adds it
+```
+
+### Real-time info
+```
+"What time is it?"     → "It's 3:23 PM"
+"What's the date?"     → "Today is Monday, June 16"
+"What's the weather?"  → "37°C, clear skies in Mumbai" (auto-detects location)
+"What's on my calendar today?" → reads today's events
+```
+
+### System controls
 Volume, brightness, sleep, lock, restart, shutdown — all by voice.
 
-### 🎵 Music Control
-Play, pause, next, previous, now playing — controls Spotify/Apple Music.
+### Music
+Play, pause, next, previous, now playing — controls Spotify and Apple Music.
 
 ---
 
 ## Setup
 
-### Requirements
-```
-Python 3.10+
-macOS 12+
-```
+**Requirements:** Python 3.10+, macOS 12+
 
-### Install
 ```bash
 git clone https://github.com/RogerTauraus/Jarvis_ARB_V1-.git
 cd Jarvis_ARB_V1-
 pip install -r requirements.txt
 ```
 
-### Configure API Keys
-Create `API/agent.env`:
-```env
-GROQ_API_KEY=your_groq_key_here
-GEMINI_API_KEY=your_gemini_key_here   # optional fallback
-```
-Get a free Groq key at [console.groq.com](https://console.groq.com) (no credit card needed).
+**Get a free API key** (for the AI brain) at [console.groq.com](https://console.groq.com) — no credit card needed.
 
-### Run
+Create `API/agent.env`:
+```
+GROQ_API_KEY=your_key_here
+```
+
+**Run it:**
 ```bash
 python voice_assistant.py
 ```
 
-Say **"Hey Jarvis"** to activate.
+Say **"Hey Jarvis"** to activate. Say **"Sleep Jarvis"** to stop.
 
 ---
 
-## How It Works
+## One-time setup you should know about
+
+**Accessibility permission (for full app control):**
+System Settings → Privacy & Security → Accessibility → add Terminal
+
+**Enable in-browser typing/button clicking:**
+Chrome → View → Developer → Allow JavaScript from Apple Events
+
+Without these, most things still work — these just unlock the last bits.
+
+---
+
+## How it works under the hood
 
 ```
-You speak → Microphone → Wake word detected (OpenWakeWord)
-         → Google Speech Recognition → Intent parsed
-         → Route to handler:
-              Browser automation (AppleScript + JS injection)
-              App launcher (dynamic scan + fuzzy match)
-              Native app control (AppleScript)
-              Real-time data (weather, time, calendar)
-              LLM fallback (Groq/Gemini for conversation)
-         → Text-to-speech response (pyttsx3)
+You speak
+  → Wake word detected (OpenWakeWord, runs locally)
+  → Google Speech Recognition converts audio to text
+  → JARVIS tries to match a command pattern
+  → If no match → LLM (Groq) parses intent and figures out what to do
+  → Executes the action (AppleScript / Python / System call)
+  → Speaks the response back (pyttsx3)
 ```
 
-### Architecture
+For browser link clicking specifically: instead of injecting JavaScript (which Chrome blocks by default), JARVIS fetches the page HTML with Python, pulls out the link URLs, and navigates Chrome directly. No permissions, no fuss.
+
+---
+
+## File structure
+
 ```
-voice_assistant.py        ← Main loop, command routing
+voice_assistant.py              ← main loop, all command routing
 assistant/
   ai/
-    llm_engine.py         ← Groq → Gemini → offline fallback
-    memory.py             ← Conversation context
-    internet_tools.py     ← Web search
+    llm_engine.py               ← Groq → Gemini → offline fallback chain
+    memory.py                   ← keeps conversation context
+    internet_tools.py           ← web search
   automation/
-    apps.py               ← Dynamic app scanner & launcher
-    browser.py            ← Browser automation (JS injection)
-    app_controls.py       ← Messages, Notes, Reminders, Maps, FaceTime
-    window_control.py     ← Real-time window context & link clicking
-    system.py             ← Volume, brightness, system commands
-    media.py              ← Music playback
+    apps.py                     ← scans + launches all apps dynamically
+    browser.py                  ← browser automation (URL-based, no JS needed)
+    app_controls.py             ← Messages, Notes, Reminders, Maps, FaceTime, Mail
+    system_settings.py          ← Settings panels, Bluetooth, WiFi
+    window_control.py           ← detects active window, routes contextual commands
+    intent_router.py            ← LLM parses compound/natural language commands
+    system.py                   ← volume, brightness, sleep, shutdown
+    media.py                    ← music playback
   wakeword/
-    porcupine_listener.py ← OpenWakeWord / Porcupine engine
+    porcupine_listener.py       ← wake word engine
 ```
 
 ---
 
-## Troubleshooting
+## Common issues
 
-**JARVIS says it will open something but nothing happens**
-- Grant Accessibility access: *System Settings → Privacy & Security → Accessibility → add Terminal / your Python*
-- Grant Microphone access: same path → Microphone
+**"It says it's opening something but nothing happens"**
+Fixed in the latest version. Was a Chrome JS restriction issue — now uses direct URL navigation instead.
 
-**PaMacCore AUHAL -50 errors in log**
-- Fixed in v1.1 — wake-word listener now releases mic before each command
+**"Open first link says I'm not sure what to do"**
+Also fixed. Now works regardless of which app is frontmost.
 
-**Wake word not detected**
+**Microphone errors (PaMacCore AUHAL -50)**
+Fixed. The wake word listener properly releases the mic before each command.
+
+**Wake word not working**
 ```bash
 pip install openwakeword onnxruntime pyaudio
 ```
 
 ---
 
-## Voice Command Quick Reference
+## Quick reference
 
 ```
-Open [any app]           Open the first/second link    Play [song] on YouTube
-Search Google for [X]    Text [contact] saying [msg]   What time is it?
-Remind me to [task]      Directions to [place]         What's the weather?
-Scroll down / up         Go back / forward             Pause video / Next video
-Click [button text]      Type [text]                   Sleep Jarvis
+Hey Jarvis                    → wake up
+Sleep Jarvis                  → go to sleep
+Open [any app]                → launches it
+Open [setting] settings       → opens that settings panel
+Open the first link           → clicks first link on current page
+Search [X] on Google          → searches Google
+Play [song] on YouTube        → finds and plays it
+Turn on/off Bluetooth         → toggles Bluetooth
+Connect to [device]           → connects Bluetooth device
+Text [contact] saying [msg]   → sends iMessage
+Remind me to [task]           → adds to Reminders
+What's the weather?           → tells you, with your location
+[X] and then [Y] and then [Z] → does all three in order
 ```
 
 ---
