@@ -11,15 +11,16 @@ import json
 import requests
 import smtplib
 import platform
+import urllib.parse
 from dotenv import load_dotenv
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from elevenlabs.client import ElevenLabs
 
-# ── New module imports (non-breaking additions) ───────────────────────────────
+# ── Core module imports ────────────────────────────────────────────────────────
 from assistant.ai.llm_engine import ask_llm
 from assistant.ai.memory import ConversationMemory
-from assistant.ai.internet_tools import is_online, web_search
+from assistant.ai.internet_tools import is_online, web_search, smart_web_answer
 from assistant.automation.apps import open_app, close_app, switch_app, open_document, refresh_index
 from assistant.automation.browser import (
     youtube_play, youtube_toggle_pause, youtube_next, youtube_fullscreen,
@@ -62,6 +63,23 @@ from assistant.automation.windows import (
 )
 from assistant.filesystem.file_manager import FileManager
 from assistant.wakeword.porcupine_listener import WakeWordListener
+# ── New feature modules (6 major features) ────────────────────────────────────
+from assistant.awareness.screen_reader import (
+    describe_screen, read_screen_text, answer_about_screen,
+    click_ui_element, find_youtube_video_on_screen, get_frontmost_app_name,
+)
+from assistant.awareness.vision import (
+    describe_what_i_see, analyze_whats_in_front, read_text_in_image, identify_object,
+)
+from assistant.awareness.personal_data import (
+    search_notes, read_latest_notes,
+    get_recent_emails, search_emails,
+    get_messages_from, search_all,
+)
+from assistant.writing.writing_tools import (
+    proofread, rewrite, summarize_text, make_shorter, make_longer,
+    fix_grammar, draft_writing, translate_text, get_clipboard, set_clipboard,
+)
 
 # Load env from API/agent.env
 _env_path = os.path.join(os.path.dirname(__file__), 'API', 'agent.env')
@@ -104,8 +122,8 @@ def speak(text):
         except Exception:
             pass  # silently fall through to Samantha
 
-    # macOS Samantha — clear, natural, no API needed
-    subprocess.run(["say", "-v", "Samantha", "-r", "175", text], check=False)
+    # Karen (en_AU) — Australian accent, natural and clear
+    subprocess.run(["say", "-v", "Karen", "-r", "165", text], check=False)
 
 
 
@@ -117,33 +135,31 @@ def wishMe():
 
     hour = datetime.datetime.now().hour
 
-    # Time-aware greeting from the engine
     greeting = get_greeting()
 
-    # Varied follow-up lines that match the time of day
     if 5 <= hour < 12:
         follow_ups = [
-            "I'm fully online and ready to assist you today.",
-            "All systems are running perfectly. What shall we tackle first?",
-            "I've got everything prepped and ready to go. What do you need?",
+            "Let's get into it — what do you need?",
+            "Ready when you are.",
+            "What are we doing today?",
         ]
     elif 12 <= hour < 17:
         follow_ups = [
-            "I'm here and ready whenever you need me.",
-            "What can I help you accomplish this afternoon?",
-            "All systems nominal. What are we working on?",
+            "What can I help you with?",
+            "What's on your mind?",
+            "Hit me — what do you need?",
         ]
     elif 17 <= hour < 21:
         follow_ups = [
-            "How was your day? Let me know what you need.",
-            "I'm here for you this evening. What can I do?",
-            "Ready and waiting. What shall we do tonight?",
+            "How was your day? What do you need?",
+            "Evening! What can I do for you?",
+            "What are we getting into tonight?",
         ]
     else:
         follow_ups = [
-            "Burning the midnight oil? I'm here to help.",
-            "Still going strong. What do you need?",
-            "I'm awake and fully operational. What's on your mind?",
+            "Still going? What do you need?",
+            "Late night. What's up?",
+            "I'm here. What do you need?",
         ]
 
     full_greeting = f"{greeting} {random.choice(follow_ups)}"
@@ -224,8 +240,13 @@ if __name__ == '__main__':
             "sleep jarvis", "jarvis sleep", "goodbye jarvis", "bye jarvis",
             "good bye", "ok bye", "shut down jarvis", "jarvis quit", "stop jarvis"
         ]):
-            speak("Going to sleep. Call me whenever you need me.")
-            break
+            speak("Alright, shutting down. See you when you need me.")
+            try:
+                _wake_listener.stop()
+            except Exception:
+                pass
+            import sys
+            sys.exit(0)
 
         # ── Compound commands: "do X and then do Y" ────────────────────────
         # e.g. "open Chrome and then search Star Wars and then open the first result"
@@ -543,18 +564,66 @@ if __name__ == '__main__':
             'weather today', 'current weather'
         ]):
             try:
-                # Detect city from IP
-                loc = requests.get("https://ipinfo.io/json", timeout=5).json()
-                city    = loc.get("city", "your location")
-                country = loc.get("country", "")
-                # Fetch weather from wttr.in (free, no API key)
-                w = requests.get(
-                    f"https://wttr.in/{city}?format=%t+%C",
-                    timeout=5
-                ).text.strip()
-                speak(f"Right now in {city}, {country}, it's {w}.")
+                import re as _re
+
+                # ── Step 1: Did the user specify a city? ──────────────────
+                # Handles: "weather in Raipur", "temperature of Delhi",
+                # "how hot is Mumbai", "weather for New York"
+                city_match = _re.search(
+                    r'(?:in|at|for|of)\s+([A-Za-z][A-Za-z\s]{1,30})$',
+                    statement.strip(), _re.IGNORECASE
+                )
+                # Strip filler words that aren't cities
+                _FILLER = {
+                    'the', 'my', 'our', 'this', 'a', 'an', 'here', 'it',
+                    'today', 'now', 'outside', 'currently', 'there', 'us',
+                    'temperature', 'weather', 'device', 'location', 'phone',
+                    'here now', 'the device', 'the location', 'the weather',
+                    'my location', 'my place', 'my city',
+                }
+                asked_city = None
+                if city_match:
+                    candidate = city_match.group(1).strip()
+                    # Only use it if it's not a filler word
+                    if candidate.lower() not in _FILLER and len(candidate) > 1:
+                        asked_city = candidate
+
+                if asked_city:
+                    # ── User asked about a specific place ─────────────────
+                    w = requests.get(
+                        f"https://wttr.in/{urllib.parse.quote(asked_city)}?format=%t+%C&lang=en",
+                        timeout=5
+                    ).text.strip()
+                    speak(f"Right now in {asked_city.title()}, it's {w}.")
+
+                else:
+                    # ── No city mentioned — use device's precise location ─
+                    loc_data = requests.get(
+                        "http://ip-api.com/json/?fields=city,regionName,country,lat,lon",
+                        timeout=5
+                    ).json()
+                    city    = loc_data.get("city", "your location")
+                    region  = loc_data.get("regionName", "")
+                    country = loc_data.get("country", "")
+                    lat     = loc_data.get("lat", "")
+                    lon     = loc_data.get("lon", "")
+
+                    if lat and lon:
+                        w = requests.get(
+                            f"https://wttr.in/{lat},{lon}?format=%t+%C&lang=en",
+                            timeout=5
+                        ).text.strip()
+                    else:
+                        w = requests.get(
+                            f"https://wttr.in/{city}?format=%t+%C&lang=en",
+                            timeout=5
+                        ).text.strip()
+
+                    location_str = f"{city}, {region}" if region and region != city else city
+                    speak(f"Right now in {location_str}, {country}, it's {w}.")
+
             except Exception as e:
-                speak("I couldn't fetch the weather right now. Check your internet connection.")
+                speak("Couldn't grab the weather — check your connection.")
                 print(e)
 
         elif "camera" in statement or "take a photo" in statement:
@@ -829,74 +898,352 @@ if __name__ == '__main__':
             )
             speak(open_setting(setting_name))
 
-        # ── Bluetooth commands ────────────────────────────────────────────────
-        elif 'bluetooth' in statement:
-            if any(p in statement for p in ['turn on', 'switch on', 'enable', 'turn bluetooth on']):
-                speak(toggle_bluetooth('on'))
-            elif any(p in statement for p in ['turn off', 'switch off', 'disable', 'turn bluetooth off']):
-                speak(toggle_bluetooth('off'))
-            elif any(p in statement for p in ['connect to', 'connect my', 'pair with']):
-                device = (
-                    statement
-                    .replace('connect to', '').replace('connect my', '')
-                    .replace('pair with', '').replace('bluetooth', '').strip()
-                )
-                speak(bluetooth_connect(device))
-            elif any(p in statement for p in ['disconnect', 'unpair']):
-                device = (
-                    statement.replace('disconnect', '').replace('unpair', '')
-                    .replace('bluetooth', '').replace('from', '').strip()
-                )
-                speak(bluetooth_disconnect(device))
-            elif any(p in statement for p in ['list', 'show devices', 'what devices', 'my devices']):
-                speak(list_bluetooth_devices())
-            elif 'status' in statement or 'is bluetooth on' in statement:
-                speak(get_bluetooth_state())
-            else:
-                # "open bluetooth" → open settings panel
-                speak(open_setting('bluetooth'))
-
-        # ── WiFi commands ─────────────────────────────────────────────────────
-        elif any(p in statement for p in ['wifi', 'wi-fi', 'wireless']):
-            if any(p in statement for p in ['turn on', 'switch on', 'enable']):
-                speak(toggle_wifi('on'))
-            elif any(p in statement for p in ['turn off', 'switch off', 'disable']):
-                speak(toggle_wifi('off'))
-            elif any(p in statement for p in ['what network', 'which network', 'am i connected', 'connected to']):
-                speak(get_current_wifi())
-            elif 'status' in statement or 'is wifi on' in statement:
-                speak(get_wifi_state())
-            elif 'connect to' in statement:
-                network = (
-                    statement.replace('connect to', '').replace('wifi', '')
-                    .replace('wi-fi', '').replace('network', '').strip()
-                )
-                speak(connect_wifi(network))
-            else:
-                speak(open_setting('wifi'))
-
-        # ── Web search (no browser) ───────────────────────────────────────────
-        elif any(p in statement for p in ['look up', 'look it up', 'what is', 'who is', 'tell me about', 'explain']):
+        # ── Bluetooth commands ─────────────────────────────────────────�        # ── Web search (no browser) ───────────────────────────────────────────
+        elif any(p in statement for p in ['look up', 'look it up', 'tell me about', 'explain']):
             reply = ask_llm(statement, _memory)
             speak(reply)
 
-        elif 'internet search' in statement or 'web search' in statement or 'search online' in statement:
+        elif any(p in statement for p in [
+            'internet search', 'web search', 'search online',
+            'search the web', 'find out about', 'research', 'get information on',
+            'what is the latest', 'what are the latest',
+        ]):
             query = (
                 statement
-                .replace('internet search', '')
-                .replace('web search', '')
-                .replace('search online', '')
-                .strip()
+                .replace('internet search for', '').replace('internet search', '')
+                .replace('web search for', '').replace('web search', '')
+                .replace('search online for', '').replace('search online', '')
+                .replace('search the web for', '').replace('search the web', '')
+                .replace('find out about', '').replace('research', '')
+                .replace('get information on', '').strip()
             )
             if query:
-                result = web_search(query)
+                speak("Searching the web — give me a second.")
+                result = smart_web_answer(query)
                 speak(result)
             else:
-                speak("What would you like me to search for online?")
+                speak("What would you like me to search for?")
 
-        elif 'clear memory' in statement or 'forget everything' in statement:
+        # ── Feature 2: Onscreen awareness ─────────────────────────────────────
+        # "what's on my screen", "read the screen", "describe what I see"
+        elif any(p in statement for p in [
+            "what's on my screen", "what is on my screen", "what's on screen",
+            "read my screen", "read the screen", "describe the screen",
+            "describe what i see", "what am i looking at", "what do i see",
+            "what's on this page", "what does this page say",
+        ]):
+            speak("Let me take a look.")
+            speak(describe_screen())
+
+        elif any(p in statement for p in [
+            "read this", "what does this say", "read that", "read this text",
+            "read what's on screen", "read the text on screen",
+        ]):
+            speak(read_screen_text())
+
+        elif any(p in statement for p in [
+            "what's on screen", "describe the app", "what app is this",
+            "what is this app", "what window is open",
+        ]):
+            app = get_frontmost_app_name()
+            speak(f"You're currently in {app}." if app else "I couldn't detect the frontmost app.")
+
+        # Screen Q&A — "what does that error mean" / "what does that button do"
+        elif any(p in statement for p in [
+            "what does that", "what does this", "what is that on screen",
+            "explain what i see", "answer this on screen",
+        ]):
+            question = statement
+            speak("Looking at your screen now.")
+            speak(answer_about_screen(question))
+
+        # ── Click a button by name in any app ─────────────────────────────────
+        # "press the X button" / "click done" / "click the close button"
+        elif any(p in statement for p in [
+            "press the button", "click the button", "press button",
+            "click button", "tap the button",
+        ]) or (
+            any(p in statement for p in ["press ", "click ", "tap "]) and
+            any(p in statement for p in ["button", "close", "done", "cancel", "ok", "confirm",
+                                          "save", "submit", "next", "back", "continue", "skip",
+                                          "accept", "decline", "allow", "deny"])
+        ):
+            import re as _re
+            btn = _re.sub(
+                r'\b(press|click|tap|the|a|an|on|button|that|this)\b', '',
+                statement, flags=_re.IGNORECASE
+            ).strip()
+            if btn:
+                speak(f"Trying to click {btn}.")
+                speak(click_ui_element(btn))
+            else:
+                speak("Which button should I click?")
+
+        # ── YouTube: open video by title when YouTube is open ─────────────────
+        # "open the video called X" / "play the video titled X"
+        elif any(p in statement for p in [
+            "open the video called", "play the video called",
+            "open the video titled", "play the video titled",
+            "find the video", "open video called", "play video called",
+        ]):
+            import re as _re
+            title = _re.sub(
+                r'\b(open|play|find|the|video|called|titled|named)\b', '',
+                statement, flags=_re.IGNORECASE
+            ).strip()
+            if title:
+                speak(f"Looking for {title} on YouTube.")
+                speak(find_youtube_video_on_screen(title))
+            else:
+                speak("What's the video title you want to open?")
+
+        # ── Feature 4: Visual intelligence (webcam) ────────────────────────────
+        elif any(p in statement for p in [
+            "what do you see", "look at this", "what are you looking at",
+            "what am i holding", "what's in front of you",
+            "describe what you see", "look at what i'm showing",
+            "take a look", "look at this for me",
+        ]):
+            speak("Give me a moment to look.")
+            speak(describe_what_i_see(statement))
+
+        elif any(p in statement for p in [
+            "what is this", "identify this", "what object is this",
+            "identify this object", "what am i looking at on camera",
+        ]) and "screen" not in statement:
+            speak("Let me have a look.")
+            speak(identify_object())
+
+        elif any(p in statement for p in [
+            "read the text", "read what you see", "read the image text",
+            "what text do you see", "read text from camera",
+        ]):
+            speak(read_text_in_image())
+
+        # ── Feature 5: Writing tools ───────────────────────────────────────────
+        elif any(p in statement for p in [
+            "proofread this", "proofread my text", "proofread what i wrote",
+            "check my grammar", "fix my grammar", "fix my spelling",
+            "fix my writing", "correct this", "correct my text",
+        ]):
+            speak("Proofreading — this takes a second.")
+            speak(proofread())
+
+        elif any(p in statement for p in [
+            "fix grammar", "grammar check", "check grammar",
+        ]):
+            speak(fix_grammar())
+
+        elif any(p in statement for p in [
+            "rewrite this", "rewrite my text", "rewrite it",
+        ]):
+            # Detect style: "rewrite this formally", "rewrite as casual"
+            import re as _re
+            style_match = _re.search(
+                r'(?:as|in a?|more)\s+(formal|casual|professional|simple|persuasive|friendly)',
+                statement, _re.IGNORECASE
+            )
+            style = style_match.group(1).lower() if style_match else "professional"
+            speak(f"Rewriting as {style}.")
+            speak(rewrite(style=style))
+
+        elif any(p in statement for p in [
+            "make it more formal", "make this formal", "make it formal",
+        ]):
+            speak(rewrite(style="formal"))
+
+        elif any(p in statement for p in [
+            "make it more casual", "make this casual", "make it casual",
+            "make it friendlier", "make this friendlier",
+        ]):
+            speak(rewrite(style="casual"))
+
+        elif any(p in statement for p in [
+            "make it more professional", "make this professional",
+        ]):
+            speak(rewrite(style="professional"))
+
+        elif any(p in statement for p in [
+            "summarize this", "summarize my text", "summarize what i wrote",
+            "give me a summary", "make a summary of this",
+        ]):
+            speak("Summarizing.")
+            result = summarize_text()
+            speak(result)
+
+        elif any(p in statement for p in [
+            "make this shorter", "shorten this", "trim this",
+            "make it shorter", "cut this down",
+        ]):
+            speak(make_shorter())
+
+        elif any(p in statement for p in [
+            "make this longer", "expand this", "elaborate on this",
+            "add more detail", "make it longer",
+        ]):
+            speak(make_longer())
+
+        elif any(p in statement for p in [
+            "translate this", "translate my text", "translate to",
+        ]):
+            import re as _re
+            lang_match = _re.search(
+                r'(?:translate (?:this )?to|into)\s+([A-Za-z]+)',
+                statement, _re.IGNORECASE
+            )
+            lang = lang_match.group(1).title() if lang_match else "English"
+            speak(f"Translating to {lang}.")
+            speak(translate_text(target_lang=lang))
+
+        elif any(p in statement for p in [
+            "write me an email", "draft an email", "draft a message",
+            "write a message", "write me a message",
+            "write a cover letter", "draft a cover letter",
+            "write me a", "draft me a", "write an essay",
+            "write a speech", "write a bio", "write a caption",
+            "compose an email", "help me write",
+        ]):
+            import re as _re
+            # Determine doc type
+            doc_types = {
+                "email": ["email", "compose an email"],
+                "message": ["message", "text"],
+                "cover letter": ["cover letter"],
+                "essay": ["essay"],
+                "speech": ["speech"],
+                "bio": ["bio"],
+                "caption": ["caption"],
+                "report": ["report"],
+                "apology": ["apology"],
+            }
+            doc_type = "email"
+            for dtype, patterns in doc_types.items():
+                if any(p in statement for p in patterns):
+                    doc_type = dtype
+                    break
+
+            # Extract topic — everything after "about" / "regarding" / "on"
+            topic_match = _re.search(
+                r'(?:about|regarding|on|for|to)\s+(.+)', statement, _re.IGNORECASE
+            )
+            topic = topic_match.group(1).strip() if topic_match else ""
+
+            if not topic:
+                speak(f"What should the {doc_type} be about?")
+                topic = takeCommand()
+
+            if topic and topic != "None":
+                speak(f"Writing your {doc_type}. Give me a moment.")
+                speak(draft_writing(doc_type, topic))
+
+        # ── Feature 1: Personal data search ───────────────────────────────────
+        elif any(p in statement for p in [
+            "search my notes", "find in my notes", "look in my notes",
+            "what's in my notes about", "find my note about",
+            "check my notes for", "my notes on",
+        ]):
+            import re as _re
+            query = _re.sub(
+                r'\b(search|find|look|check|my|notes|note|in|about|for|on|what|is|are|the)\b',
+                '', statement, flags=_re.IGNORECASE
+            ).strip()
+            if query:
+                speak(f"Searching your notes for {query}.")
+                speak(search_notes(query))
+            else:
+                speak("Reading your latest notes.")
+                speak(read_latest_notes(3))
+
+        elif any(p in statement for p in [
+            "read my notes", "show my notes", "what are my notes",
+            "latest notes", "recent notes", "open my notes",
+        ]):
+            speak("Here are your latest notes.")
+            speak(read_latest_notes(3))
+
+        elif any(p in statement for p in [
+            "check my emails", "read my emails", "what emails do i have",
+            "my recent emails", "any new emails", "check my mail",
+            "read my mail", "what's in my inbox",
+        ]):
+            speak("Checking your inbox.")
+            speak(get_recent_emails(5))
+
+        elif any(p in statement for p in [
+            "any emails from", "emails from", "mail from",
+        ]):
+            import re as _re
+            m = _re.search(r'(?:emails? from|mail from)\s+(.+)', statement, _re.IGNORECASE)
+            sender = m.group(1).strip() if m else ""
+            if sender:
+                speak(f"Looking for emails from {sender}.")
+                speak(get_recent_emails(count=5, sender_filter=sender))
+            else:
+                speak(get_recent_emails(5))
+
+        elif any(p in statement for p in [
+            "search my email", "search emails", "find emails about",
+            "search my mail for",
+        ]):
+            import re as _re
+            query = _re.sub(
+                r'\b(search|find|my|emails?|mail|about|for)\b', '',
+                statement, flags=_re.IGNORECASE
+            ).strip()
+            if query:
+                speak(search_emails(query))
+            else:
+                speak(get_recent_emails(5))
+
+        elif any(p in statement for p in [
+            "what did", "messages from", "check messages from",
+            "read messages from", "what did they say", "what did",
+        ]) and any(p in statement for p in [
+            "message me", "text me", "say", "messages from", "send me",
+        ]):
+            import re as _re
+            m = _re.search(r'what did\s+(.+?)\s+(?:message|text|say|send)', statement, _re.IGNORECASE)
+            m2 = _re.search(r'(?:messages? from|check messages from|read messages from)\s+(.+)', statement, _re.IGNORECASE)
+            contact = (m.group(1) if m else m2.group(1) if m2 else "").strip()
+            if contact:
+                speak(f"Reading messages from {contact}.")
+                speak(get_messages_from(contact))
+            else:
+                speak("Who's messages should I check?")
+
+        elif any(p in statement for p in [
+            "search all my data", "search my stuff", "look through everything",
+            "find in everything", "search everywhere for",
+        ]):
+            import re as _re
+            query = _re.sub(
+                r'\b(search|look|find|my|data|stuff|through|everything|in|all|everywhere|for)\b',
+                '', statement, flags=_re.IGNORECASE
+            ).strip()
+            if query:
+                speak(f"Searching everything for {query}.")
+                speak(search_all(query))
+            else:
+                speak("What should I search for?")
+
+        # ── Feature 6: Conversation history management ─────────────────────────
+        elif any(p in statement for p in [
+            "clear conversation", "clear history", "forget everything",
+            "fresh start", "clear chat", "reset conversation",
+            "forget our conversation", "wipe conversation",
+        ]):
+            speak(_memory.clear())
+
+        elif any(p in statement for p in [
+            "what did we talk about", "what were we discussing",
+            "what did i say", "conversation history", "what have we talked about",
+        ]):
+            summary = _memory.get_recent_summary(5)
+            speak(summary)
+
+        elif 'clear memory' in statement:
             _memory.clear()
-            speak("Conversation memory cleared. Starting fresh.")
+            speak("Done — conversation history cleared. Fresh start.")
 
         # ── Generative catch-all: LLM decides what to do ─────────────────────
         # Tries action routing first (open app, navigate, etc.)

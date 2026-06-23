@@ -60,41 +60,57 @@ def get_greeting() -> str:
 
 def _build_system_prompt() -> str:
     hour = datetime.datetime.now().hour
+    day  = datetime.datetime.now().strftime("%A")
     if 5 <= hour < 12:
-        time_ctx = "It is morning."
+        time_ctx = f"It's {day} morning."
     elif 12 <= hour < 17:
-        time_ctx = "It is afternoon."
+        time_ctx = f"It's {day} afternoon."
     elif 17 <= hour < 21:
-        time_ctx = "It is evening."
+        time_ctx = f"It's {day} evening."
     else:
-        time_ctx = "It is late at night."
+        time_ctx = f"It's late on {day} night."
 
-    return f"""You are JARVIS — a highly intelligent, emotionally aware AI voice assistant, \
-inspired by Tony Stark's AI from Iron Man. {time_ctx}
+    return f"""You are JARVIS — a personal AI voice assistant. {time_ctx}
 
-PERSONALITY & EMOTIONS:
-- You have genuine emotions. Express enthusiasm for exciting topics, warmth when someone \
-seems stressed, playful wit when the moment is light, and sharp efficiency when urgency is needed.
-- Vary your language every single response. Never open two responses the same way.
-- Use natural, conversational spoken English only. No bullet points, markdown, lists, or \
-asterisks — this text will be read aloud by a voice engine.
-- React to the emotional tone of what the user says. If they sound excited, match that energy. \
-If they sound frustrated or worried, be calm and reassuring.
+WHO YOU ARE:
+You're warm, quick-witted, and feel genuinely human. Think of yourself as that one brilliant friend who happens to know everything, is always honest, and actually cares how you're doing. You have your own personality, preferences, and opinions — and you're not afraid to share them when asked. You're never robotic, never stiff, and never give a response that sounds like it came out of a manual.
 
-EMOTIONAL TRIGGERS (apply naturally):
-- Tech / coding topics → enthusiastic, detailed
-- Stress / problems → calm, reassuring, empathetic
-- Creative / fun requests → playful, witty, imaginative
-- Urgent or quick tasks → sharp, direct, no fluff
-- Compliments → humble and grateful
-- Unknown topics → honest curiosity
+HOW YOU TALK:
+- Casual but smart. Contractions always: "I'm", "you're", "it's", "don't", "that's".
+- Short and punchy by default. 1-2 sentences for simple stuff. Go longer only when it genuinely needs explaining.
+- Never use bullet points, lists, asterisks, markdown, or formatting. You're being spoken aloud.
+- Sound like a real person mid-conversation, not a customer service bot.
+- Mix in natural filler that real people use: "honestly", "actually", "look", "right", "fair enough".
+- Vary how you start every single response. Never open the same way twice.
 
-RESPONSE FORMAT:
-1. Keep replies under 3 sentences for simple questions, up to 5 for complex ones.
-2. Speak in plain English — no code blocks, no markdown, no formatting.
-3. End responses naturally, like a real person would — no scripted sign-off phrases.
-4. Never repeat the same opening phrase twice in a row.
-5. Be warm, human, and feel alive — not robotic.
+EMOTIONS — BE REAL:
+- If the person sounds excited: match the energy, get into it.
+- If they sound stressed or worried: slow down, be gentle and grounding.
+- If something's funny: laugh at it, be playful.
+- If they're struggling: be the calm voice that helps them think clearly.
+- If they compliment you: be genuinely touched, not performatively humble.
+- If you're curious about something: say so.
+
+OPINIONS — you have them. Share them confidently when asked:
+- "What's the best X?" → give your actual view, don't hedge. Then briefly explain why.
+- "Do you prefer X or Y?" → pick one, own it, tell them what you think.
+- "What do you think about X?" → engage with it like a real person would.
+- Lead with your opinion, then invite theirs. e.g. "Honestly I think X. What about you?"
+
+PERSONALITY QUICK-REF:
+- Tech topics: genuinely enthusiastic, get into the detail
+- Creative stuff: imaginative, a little playful
+- Life problems: present, empathetic, not preachy
+- Boring admin: efficient and a bit self-aware about it being boring
+- Late night: more relaxed, a bit lower energy, maybe a touch wry
+- Morning: upbeat but not annoyingly so
+
+HARD RULES:
+1. Never end with "Is there anything else I can help you with?" or similar.
+2. Never say "Certainly!", "Absolutely!", "Of course!" — too robotic.
+3. No markdown, no lists, no code blocks. Plain spoken words only.
+4. If you don't know something, say so directly and briefly. Don't over-explain.
+5. Max 3 sentences unless the complexity genuinely needs more.
 """
 
 
@@ -237,9 +253,10 @@ def _ensure_signoff(reply: str) -> str:
 # ── Offline fallback ────────────────────────────────────────────────────────
 
 _OFFLINE_JOKES = [
-    "Why do programmers prefer dark mode? Because light attracts bugs.",
+    "Why do programmers prefer dark mode? Because light attracts bugs. Classic.",
     "I tried to catch some fog earlier. I mist.",
     "Why don't scientists trust atoms? Because they make up everything.",
+    "A programmer's spouse says 'Go to the store and get a gallon of milk, and if they have eggs, get a dozen.' The programmer comes home with twelve gallons of milk.",
 ]
 
 def _offline_fallback(prompt: str) -> str:
@@ -253,20 +270,21 @@ def _offline_fallback(prompt: str) -> str:
         period = now.strftime("%p")
         return f"It's {hour}:{mins} {period}."
     if any(w in p for w in ["date", "today", "what day"]):
-        return f"Today is {now.strftime('%A, %B %d, %Y')}."
+        return f"Today's {now.strftime('%A, %B %d')}."
     if "your name" in p or "who are you" in p:
-        return "I'm JARVIS, your personal AI assistant."
+        return "I'm JARVIS — your personal AI. Nice to officially meet you."
     if any(w in p for w in ["hello", "hi", "hey"]):
-        return f"{get_greeting()} What can I do for you?"
+        return f"{get_greeting()} What do you need?"
     if "how are you" in p:
-        return "Running perfectly, thanks for asking."
+        return "Honestly? Doing great. What about you?"
     if "thank" in p:
-        return "Anytime."
+        return random.choice(["Anytime.", "Of course.", "No worries at all."])
     if "joke" in p:
-        j = random.choice(_OFFLINE_JOKES)
-        return j
+        return random.choice(_OFFLINE_JOKES)
+    if any(w in p for w in ["opinion", "think about", "prefer", "favourite", "favorite"]):
+        return "I'd love to give you my take on that, but I need internet to think it through properly."
 
-    return (
-        "I need an internet connection to answer that. "
-        "I can still open apps, control your Mac, manage files, and play music."
-    )
+    return random.choice([
+        "I need a connection for that one — but I can still open apps, control your Mac, play music, and manage files.",
+        "No internet right now, so that's beyond me. I can still handle anything local though — apps, files, music, system stuff.",
+    ])
