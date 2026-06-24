@@ -899,7 +899,7 @@ if __name__ == '__main__':
             )
             speak(open_setting(setting_name))
 
-        # ── Bluetooth commands ─────────────────────────────────────────�        # ── Web search (no browser) ───────────────────────────────────────────
+        # ── Bluetooth commands ─────────────────────────────────────────-        # ── Web search (no browser) ───────────────────────────────────────────
         elif any(p in statement for p in ['look up', 'look it up', 'tell me about', 'explain']):
             reply = ask_llm(statement, _memory)
             speak(reply)
@@ -1246,13 +1246,42 @@ if __name__ == '__main__':
             _memory.clear()
             speak("Done — conversation history cleared. Fresh start.")
 
-        # ── Generative catch-all: LLM decides what to do ─────────────────────
-        # Tries action routing first (open app, navigate, etc.)
-        # Falls back to conversation if it's a question / chat
+        # -- Conversational / opinion questions: skip route_with_llm
+        # Go straight to LLM for any question JARVIS should just answer
+        elif any(statement.lower().startswith(p) for p in [
+            "what do you think", "what is your opinion", "whats your opinion",
+            "do you think", "do you believe", "do you like", "do you prefer",
+            "how do you feel", "what are your thoughts", "what would you do",
+            "if you were", "in your opinion", "what is", "who is", "who was",
+            "what was", "why is", "why was", "why did", "how does", "how did",
+            "how do", "how is", "can you explain", "explain", "tell me about",
+            "what happened", "talk to me about", "did you know",
+        ]) or any(p in statement.lower() for p in [
+            "what do you think", "your opinion", "your thoughts", "your view",
+            "your take on", "do you think", "in your opinion", "do you agree",
+            "help me understand",
+        ]):
+            reply = ask_llm(statement, _memory)
+            speak(reply)
+
+        # -- Generative catch-all: for device actions (open app, navigate etc.)
+        # Has a 20-second timeout so it never freezes the app.
         else:
-            action_response = route_with_llm(statement)
-            if action_response:
-                speak(action_response)
+            import threading as _threading
+            _result = [None]
+
+            def _route():
+                try:
+                    _result[0] = route_with_llm(statement)
+                except Exception as _e:
+                    logger.warning(f'route_with_llm error: {_e}')
+
+            _t = _threading.Thread(target=_route, daemon=True)
+            _t.start()
+            _t.join(timeout=20)
+
+            if _result[0]:
+                speak(_result[0])
             else:
                 reply = ask_llm(statement, _memory)
                 speak(reply)

@@ -196,6 +196,7 @@ def ask_llm(prompt: str, memory: ConversationMemory) -> str:
                 messages=[{"role": "system", "content": sys_prompt}] + messages,
                 max_tokens=300,
                 temperature=0.80,   # higher = more creative / varied
+                timeout=15,  # never hang more than 15 seconds
             )
             reply = resp.choices[0].message.content.strip()
             memory.add("assistant", reply)
@@ -213,9 +214,11 @@ def ask_llm(prompt: str, memory: ConversationMemory) -> str:
                 role = "User" if m["role"] == "user" else "JARVIS"
                 ctx += f"{role}: {m['content']}\n"
             ctx += "JARVIS:"
+            from google.genai import types as _gtypes
             resp = gemini_client.models.generate_content(
                 model="gemini-2.0-flash",
                 contents=ctx,
+                config=_gtypes.GenerateContentConfig(timeout=15)
             )
             reply = resp.text.strip()
             memory.add("assistant", reply)
@@ -232,6 +235,7 @@ def ask_llm(prompt: str, memory: ConversationMemory) -> str:
                 messages=[{"role": "system", "content": sys_prompt}] + messages,
                 max_tokens=300,
                 temperature=0.80,
+                timeout=15,
             )
             reply = resp.choices[0].message.content.strip()
             memory.add("assistant", reply)
