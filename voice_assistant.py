@@ -181,8 +181,9 @@ def takeCommand():
         with sr.Microphone() as source:
             print("Listening...")
             r.adjust_for_ambient_noise(source, duration=0.3)
-            r.pause_threshold = 1
-            audio = r.listen(source, timeout=8, phrase_time_limit=12)
+            r.pause_threshold = 2.0     # wait 2s of silence before ending phrase
+            r.non_speaking_duration = 0.8   # buffer before speech is considered done
+            audio = r.listen(source, timeout=10, phrase_time_limit=20)
         try:
             statement = r.recognize_google(audio, language='en-in')
             print(f"user said: {statement}\n")
@@ -239,7 +240,13 @@ if __name__ == '__main__':
         # ── Sleep / Stop commands ─────────────────────────────────────────────
         if any(p in statement for p in [
             "sleep jarvis", "jarvis sleep", "goodbye jarvis", "bye jarvis",
-            "good bye", "ok bye", "shut down jarvis", "jarvis quit", "stop jarvis"
+            "good bye", "ok bye", "shut down jarvis", "jarvis quit", "stop jarvis",
+            "goodnight jarvis", "good night jarvis", "night jarvis",
+            "goodbye", "goodnight", "good night", "good bye",
+            "you can sleep", "go to sleep", "sleep now", "shut down now",
+            "see you later", "see you", "take care", "that will be all",
+            "you can go", "you can stop", "you can rest", "stop now",
+            "have a good", "catch you later", "peace jarvis", "later jarvis",
         ]):
             speak("Alright, shutting down. See you when you need me.")
             try:
@@ -294,22 +301,27 @@ if __name__ == '__main__':
                 speak("I'm not sure what to do in this window. Try saying 'open first link' or 'click sign in'.")
 
         # ── YouTube smart commands (search & play, pause, next, fullscreen) ──
-        elif any(p in statement for p in ['play', 'watch', 'search']) and 'youtube' in statement:
-            # "play X on youtube" / "watch X youtube" / "search youtube for X"
-            query = (
-                statement
-                .replace('play', '').replace('watch', '').replace('search', '')
-                .replace('for', '').replace('on youtube', '').replace('youtube', '')
-                .strip()
-            )
-            if query:
-                speak(f"Searching YouTube for {query}, one moment.")
+        elif 'youtube' in statement and any(p in statement for p in [
+            'play', 'watch', 'search', 'find', 'look up', 'show me',
+            'open', 'put on', 'play me', 'show', 'in youtube', 'on youtube',
+        ]):
+            # Strip all YouTube/action words to get the video/channel query
+            query = statement
+            for w in ['play me', 'play', 'watch', 'search for', 'search', 'find',
+                      'look up', 'show me', 'show', 'put on', 'open',
+                      'in youtube', 'on youtube', 'youtube', 'video', 'the',
+                      'for me', 'for', 'latest', 'newest', 'new']:
+                query = query.replace(w, ' ')
+            query = ' '.join(query.split()).strip()
+
+            if query and len(query) > 1:
+                speak(f"Looking up {query} on YouTube, give me a second.")
                 speak(youtube_play(query))
             else:
                 browser_go_to("https://www.youtube.com")
                 speak("YouTube is open.")
 
-        elif 'open youtube' in statement:
+        elif 'open youtube' in statement or statement.strip() == 'youtube':
             browser_go_to("https://www.youtube.com")
             speak("YouTube is open.")
 

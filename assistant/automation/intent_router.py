@@ -116,8 +116,25 @@ def execute_action(action: dict) -> str:
         return open_app(action.get("name", ""))
 
     elif t == "open_url":
-        from assistant.automation.browser import browser_go_to
-        return browser_go_to(action.get("url", ""))
+        url = action.get("url", "")
+        if "youtube.com" in url:
+            from assistant.automation.browser import browser_go_to, youtube_play
+            import urllib.parse as _up
+            # If it's a search URL, extract query and use youtube_play
+            parsed = _up.urlparse(url)
+            qs = _up.parse_qs(parsed.query)
+            query = qs.get("search_query", [""])[0]
+            if query:
+                return youtube_play(query)
+            else:
+                # Channel or video URL - just navigate
+                browser_go_to(url)
+                return "Opening that YouTube page now."
+        else:
+            from assistant.automation.browser import browser_go_to
+            browser_go_to(url)
+            domain = url.split("/")[2] if "/" in url else url
+            return f"Opening {domain} now."
 
     elif t == "search_web":
         from assistant.automation.browser import browser_search
