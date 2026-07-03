@@ -391,12 +391,38 @@ if __name__ == '__main__':
                 # Smart extraction: handles 'in Spotify play open up by Daniel Caesar'
                 # and 'open Spotify and play this is my life' correctly
                 query = extract_spotify_query(stmt)
-                if query and len(query) > 1:
+
+                # "play the current song", "play it", "play this", "play the song"
+                # → these all mean RESUME, not search
+                _resume_tokens = {
+                    'current song', 'current track', 'current', 'this song',
+                    'this track', 'this', 'it', 'the song', 'the track',
+                    'same song', 'same track', 'that song', 'that track',
+                    'song', 'track', 'music', 'the music', 'that music',
+                    'what was playing', 'what is playing',
+                    # with leading "the"
+                    'the current song', 'the current track', 'the same song',
+                    'the same track', 'the this song',
+                }
+                _q_norm = query.lower().strip()
+                # also check after stripping a leading "the "
+                _q_no_the = _q_norm[4:] if _q_norm.startswith('the ') else _q_norm
+                _is_resume = (
+                    not query
+                    or len(query) < 2
+                    or _q_norm in _resume_tokens
+                    or _q_no_the in _resume_tokens
+                    or 'was playing' in _q_norm   # "play the song that was playing"
+                    or 'is playing' in _q_norm    # "play whatever is playing"
+                )
+                if _is_resume:
+                    speak(spotify_resume())
+
+
+                else:
                     speak(f"Looking for '{query}' on Spotify.")
                     result = spotify_play(query)
                     speak(result)
-                else:
-                    speak(spotify_resume())
 
             # Pause
             elif any(p in stmt for p in ['pause', 'stop music', 'stop spotify']):
