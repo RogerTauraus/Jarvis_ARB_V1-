@@ -77,6 +77,11 @@ from assistant.awareness.personal_data import (
     get_recent_emails, search_emails,
     get_messages_from, search_all,
 )
+from assistant.automation.in_app_actions import (
+    app_store_search, search_in_app, search_in_frontmost_app,
+    chrome_click_element, chrome_fill_form, chrome_scroll,
+    telegram_search, telegram_open_chat, press_button_in_app,
+)
 from assistant.automation.spotify import (
     spotify_play, spotify_pause, spotify_resume, spotify_next, spotify_previous,
     spotify_volume, spotify_current_track, spotify_play_pause, spotify_shuffle,
@@ -102,7 +107,9 @@ el_client = ElevenLabs(api_key=_el_api_key) if _el_api_key else None
 VOICE_ID = os.getenv('ELEVENLABS_VOICE_ID', 'EXAVITQu4vr4xnSDxMaL')
 
 # ── New module initialization ─────────────────────────────────────────────────
-_memory = ConversationMemory()  # session-scoped conversation memory
+_memory = ConversationMemory()
+# Track which app was last explicitly opened so follow-up commands stay in context
+_last_opened_app: str = ""   # e.g. "app store", "spotify", "chrome"  # session-scoped conversation memory
 _file_manager = None            # initialized after speak() is defined
 
 
@@ -490,9 +497,83 @@ if __name__ == '__main__':
             result = identify_song()
             speak(result)
 
+        # ── In-App Actions: "search in App Store for X", "in Chrome click X" ─────
+        # Pattern 1: "in [app] [action]" — e.g. "in app store search for fortnite"
+        # Pattern 2: "[action] in [app]" / "[action] in it" — e.g. "search fortnite in it"
+        # Pattern 3: "[app] search for X" — explicit app context in statement
+        elif re.search(r'\bin (app store|chrome|safari|finder|telegram|mail|notes)\b', statement):
+            import re as _re2
+            m = _re2.search(r'\bin (app store|chrome|safari|finder|telegram|mail|notes)\b', statement)
+            _ctx_app = m.group(1)
+            _last_opened_app = _ctx_app
+            action_part = (statement[:m.start()] + statement[m.end():]).strip()
+
+            if any(p in action_part for p in ['search', 'find', 'look for', 'look up']):
+                query = _re2.sub(r'\b(search for|search|find|look for|look up|now|please)\b', ' ', action_part).strip()
+                query = ' '.join(query.split())
+                speak(search_in_app(_ctx_app, query) if query else f"What do you want to search for in {_ctx_app}?")
+            elif 'click' in action_part or 'press' in action_part or 'tap' in action_part:
+                btn = _re2.sub(r'\b(click|press|tap|the|button|on)\b', ' ', action_part).strip()
+                btn = ' '.join(btn.split())
+                speak(press_button_in_app(btn, _ctx_app) if btn else "What button should I click?")
+            elif _ctx_app == 'telegram' and any(p in action_part for p in ['open chat', 'message', 'contact']):
+                contact = _re2.sub(r'\b(open chat|chat with|message|contact|with)\b', ' ', action_part).strip()
+                speak(telegram_open_chat(' '.join(contact.split())))
+            else:
+                subprocess.run(["open", "-a", _ctx_app], capture_output=True, timeout=5)
+                speak(f"Opened {_ctx_app}.")
+
+        # App Store explicit patterns: "search in app store for X", "app store search for X"
+        # "now in app store search for X", "search for X in app store"
+        elif ('app store' in statement and
+              any(p in statement for p in ['search', 'find', 'look for', 'look up', 'get', 'download'])):
+            import re as _re3
+            query = statement
+            for w in ['search for', 'search', 'find', 'look for', 'look up',
+                      'in app store', 'app store', 'for me', 'now', 'please',
+                      'in it', 'in the', 'get', 'download', 'open']:
+                query = query.replace(w, ' ')
+            query = ' '.join(query.split()).strip()
+            _last_opened_app = 'app store'
+            if query:
+                speak(f"Searching the App Store for '{query}'.")
+                speak(app_store_search(query))
+            else:
+                subprocess.run(["open", "-a", "App Store"], capture_output=True, timeout=5)
+                speak("App Store is open.")
+
+        # "search for X in it" — use _last_opened_app as context
+        elif ('search' in statement or 'find' in statement) and (
+            ' in it' in statement or 'in here' in statement or 'within' in statement
+        ) and _last_opened_app:
+            import re as _re4
+            query = statement
+            for w in ['search for', 'search', 'find', 'in it', 'in here', 'within', 'please', 'now']:
+                query = query.replace(w, ' ')
+            query = ' '.join(query.split()).strip()
+            if query:
+                speak(f"Searching {_last_opened_app} for '{query}'.")
+                speak(search_in_app(_last_opened_app, query))
+
+        # Chrome in-page actions: "click X button", "fill in X", "scroll down"
+        elif any(p in statement for p in ['click the', 'click on', 'press the button', 'fill in', 'fill the']) and (
+            'chrome' in statement or get_frontmost_app_name().lower() in ['google chrome', 'chrome']
+        ):
+            import re as _re5
+            if 'fill' in statement:
+                parts = _re5.split(r'\bwith\b|\bvalue\b', statement)
+                field = _re5.sub(r'\b(fill in|fill the|fill|in|the|field|box|input)\b', ' ', parts[0]).strip()
+                value = parts[1].strip() if len(parts) > 1 else ""
+                speak(chrome_fill_form(' '.join(field.split()), value))
+            else:
+                btn = _re5.sub(r'\b(click the|click on|click|press the|press|tap the|tap|button|link|on)\b', ' ', statement).strip()
+                speak(chrome_click_element(' '.join(btn.split())))
+
         # ── Google & web search ──────────────────────────────────────────────
 
-        elif 'open google' in statement:
+
+
+        elif 'open google' in statement and 'maps' not in statement and 'drive' not in statement and 'docs' not in statement:
             browser_go_to("https://www.google.com")
             speak("Google is open.")
 
@@ -931,7 +1012,10 @@ if __name__ == '__main__':
                 if "couldn't find" in result.lower():
                     doc_result = open_document(query)
                     result = doc_result if "couldn't find" not in doc_result.lower() else result
+                # Track context so the NEXT command knows which app is active
+                _last_opened_app = query.lower().strip()
                 speak(result)
+
 
         elif 'open document' in statement or 'open file' in statement:
             query = (statement
