@@ -36,7 +36,7 @@ _DOC_EXTENSIONS = {
     ".pdf", ".doc", ".docx", ".txt", ".pages", ".numbers", ".key",
     ".xlsx", ".xls", ".pptx", ".ppt", ".csv", ".rtf",
     ".png", ".jpg", ".jpeg", ".gif", ".mp4", ".mov", ".mp3",
-    ".zip", ".dmg",
+    # ".zip", ".dmg",  # excluded: installers cause false matches with real apps
 }
 
 # ── In-memory indexes ─────────────────────────────────────────────────────────
@@ -123,8 +123,9 @@ def _find_app(query: str):
             path = candidates[key]
             return _display(path), path
 
-    # 2. Normalised starts-with (e.g. "vscode" → "Visual Studio Code")
-    for name, path in candidates.items():
+    # 2. Normalised starts-with — prefer /Applications over ~/Downloads
+    for name, path in sorted(candidates.items(),
+                              key=lambda x: (0 if "/Applications" in x[1] else 1)):
         if name.startswith(q_norm) and len(q_norm) >= 3:
             return _display(path), path
 
@@ -182,14 +183,25 @@ def _find_doc(query: str):
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def open_app(query: str) -> str:
-    """Find and open any app by name. Falls back to 'open -a' if index misses."""
+    """Find and open any app by name. Tries 'open -a' first for reliability."""
     query = query.strip()
     if not query:
         return "What app would you like me to open?"
 
-    display, path = _find_app(query)
+    # Step 1: Try macOS native 'open -a' — fastest and most reliable
+    # This handles Spotify, Chrome, etc. perfectly
+    try:
+        result = subprocess.run(
+            ["open", "-a", query],
+            capture_output=True, text=True, timeout=6
+        )
+        if result.returncode == 0:
+            return f"Opening {query}."
+    except Exception:
+        pass
 
-    # Try via index
+    # Step 2: Try our app index (for fuzzy/alternate names)
+    display, path = _find_app(query)
     if path:
         try:
             subprocess.Popen(["open", path])
@@ -197,7 +209,7 @@ def open_app(query: str) -> str:
         except Exception as e:
             logger.warning(f"open_app index launch failed: {e}")
 
-    # Fallback: let macOS resolve it via 'open -a'
+    # Step 3: Fallback — Spotlight
     try:
         result = subprocess.run(
             ["open", "-a", query],

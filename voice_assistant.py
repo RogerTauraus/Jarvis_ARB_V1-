@@ -77,6 +77,16 @@ from assistant.awareness.personal_data import (
     get_recent_emails, search_emails,
     get_messages_from, search_all,
 )
+from assistant.automation.spotify import (
+    spotify_play, spotify_pause, spotify_resume, spotify_next, spotify_previous,
+    spotify_volume, spotify_current_track, spotify_play_pause, spotify_shuffle,
+    spotify_repeat, spotify_like_current, spotify_open,
+)
+from assistant.automation.maps import (
+    google_maps_directions, google_maps_search, google_maps_nearby,
+    open_directions, open_location, parse_route_intent, parse_travel_mode,
+)
+from assistant.awareness.song_recognition import identify_song
 from assistant.writing.writing_tools import (
     proofread, rewrite, summarize_text, make_shorter, make_longer,
     fix_grammar, draft_writing, translate_text, get_clipboard, set_clipboard,
@@ -257,11 +267,39 @@ if __name__ == '__main__':
             sys.exit(0)
 
         # ── Compound commands: "do X and then do Y" ────────────────────────
-        # e.g. "open Chrome and then search Star Wars and then open the first result"
+        # e.g. "open Spotify and play Blinding Lights"
         elif len(split_compound(statement)) > 1:
             sub_commands = split_compound(statement)
+            _last_opened_app = None
+
             for i, sub in enumerate(sub_commands):
-                # Use LLM intent router for each sub-command
+                sub = sub.strip()
+
+                # Track which app was last opened for context
+                if any(p in sub for p in ['open ', 'launch ', 'start ']):
+                    for app_kw in ['spotify', 'youtube', 'chrome', 'safari',
+                                   'maps', 'mail', 'notes', 'calendar']:
+                        if app_kw in sub:
+                            _last_opened_app = app_kw
+                            break
+
+                # If previous command opened Spotify and this is a play command,
+                # route to spotify_play directly without going through LLM
+                if _last_opened_app == 'spotify' and any(
+                    p in sub for p in ['play', 'listen to', 'put on']
+                ) and 'spotify' not in sub:
+                    query = sub
+                    for w in ['play me', 'play', 'listen to', 'put on',
+                              'song', 'track', 'the']:
+                        query = query.replace(w, ' ')
+                    query = ' '.join(query.split()).strip()
+                    if query:
+                        speak(f"Playing '{query}' on Spotify.")
+                        result = spotify_play(query)
+                        speak(result)
+                        continue
+
+                # General LLM routing for other sub-commands
                 result = route_with_llm(sub)
                 if result:
                     speak(result)
@@ -337,7 +375,103 @@ if __name__ == '__main__':
         elif 'mute youtube' in statement or 'unmute youtube' in statement:
             speak(youtube_mute())
 
+        # ── Spotify controls ─────────────────────────────────────────────────
+        # Handles: "play X on Spotify", "pause Spotify", "next song", etc.
+        elif 'spotify' in statement or (
+            any(p in statement for p in ['next song', 'previous song', 'skip song',
+                'pause music', 'resume music', 'what song', 'what is playing',
+                'current song', 'like this song', 'shuffle', 'repeat'])
+            and any(p in statement for p in ['song', 'music', 'track', 'spotify',
+                                              'playing', 'playlist'])
+        ):
+            stmt = statement
+
+            # Open Spotify
+            if stmt in ['open spotify', 'spotify', 'launch spotify']:
+                speak(spotify_open())
+
+            # Play a song/artist/album
+            elif any(p in stmt for p in ['play', 'put on', 'listen to', 'play me']):
+                query = stmt
+                for w in ['play me', 'play', 'put on', 'listen to', 'on spotify',
+                          'spotify', 'song', 'track', 'the']:
+                    query = query.replace(w, ' ')
+                query = ' '.join(query.split()).strip()
+                if query and len(query) > 1:
+                    speak(f"Looking for '{query}' on Spotify.")
+                    result = spotify_play(query)
+                    speak(result)
+                else:
+                    speak(spotify_resume())
+
+            # Pause
+            elif any(p in stmt for p in ['pause', 'stop music', 'stop spotify']):
+                speak(spotify_pause())
+
+            # Resume
+            elif any(p in stmt for p in ['resume', 'continue', 'unpause']):
+                speak(spotify_resume())
+
+            # Next track
+            elif any(p in stmt for p in ['next', 'skip', 'next song', 'next track']):
+                speak(spotify_next())
+
+            # Previous track
+            elif any(p in stmt for p in ['previous', 'go back', 'last song', 'prev']):
+                speak(spotify_previous())
+
+            # What's playing
+            elif any(p in stmt for p in ['what song', 'what is playing', "what's playing",
+                                          'current song', 'current track', 'name of the song']):
+                speak(spotify_current_track())
+
+            # Volume
+            elif 'volume' in stmt:
+                import re as _re
+                nums = _re.findall(r'\d+', stmt)
+                if nums:
+                    speak(spotify_volume(int(nums[0])))
+                elif any(w in stmt for w in ['up', 'higher', 'louder']):
+                    speak(spotify_volume(80))
+                elif any(w in stmt for w in ['down', 'lower', 'quieter', 'softer']):
+                    speak(spotify_volume(30))
+
+            # Shuffle
+            elif 'shuffle' in stmt:
+                on = 'on' in stmt or 'enable' in stmt or 'shuffle' == stmt.strip()
+                speak(spotify_shuffle(on))
+
+            # Repeat
+            elif 'repeat' in stmt:
+                on = 'off' not in stmt and 'disable' not in stmt
+                speak(spotify_repeat(on))
+
+            # Like current song
+            elif any(p in stmt for p in ['like this', 'like the song', 'save this', 'heart this']):
+                speak(spotify_like_current())
+
+            else:
+                # Try to play whatever was said as a song name
+                query = stmt.replace('spotify', '').strip()
+                if query:
+                    speak(f"Searching Spotify for '{query}'.")
+                    speak(spotify_play(query))
+                else:
+                    speak(spotify_open())
+
+        # ── Song Recognition (Shazam) ─────────────────────────────────────────
+        elif any(p in statement for p in [
+            'what song is this', 'what song is playing', 'shazam this',
+            'identify this song', 'what is this song', "what's this song",
+            'recognize this song', 'name this song', 'what music is this',
+            'what is playing', "what's playing"
+        ]):
+            speak("Listening for the song, give me about 7 seconds...")
+            result = identify_song()
+            speak(result)
+
         # ── Google & web search ──────────────────────────────────────────────
+
         elif 'open google' in statement:
             browser_go_to("https://www.google.com")
             speak("Google is open.")
@@ -455,27 +589,50 @@ if __name__ == '__main__':
         elif any(p in statement for p in ['what are my reminders', "show my reminders", 'read my reminders', 'list reminders']):
             speak(list_reminders())
 
-        # ── Maps & Directions ────────────────────────────────────────────────
-        elif any(p in statement for p in ['directions to', 'navigate to', 'how do i get to', 'take me to']):
-            dest = (
-                statement
-                .replace('directions to', '').replace('navigate to', '')
-                .replace('how do i get to', '').replace('take me to', '').strip()
-            )
-            mode = 'w' if 'walk' in statement else 'd'
-            speak(get_directions(dest, mode))
-
-        elif 'show' in statement and 'maps' in statement or 'open maps' in statement:
-            location = (
-                statement
-                .replace('show me', '').replace('on maps', '')
-                .replace('open maps', '').replace('maps', '').strip()
-            )
-            if location:
-                speak(open_maps(location))
+        # ── Maps & Directions (Google Maps) ─────────────────────────────────
+        elif any(p in statement for p in [
+            'directions', 'navigate to', 'how do i get to', 'take me to',
+            'route from', 'route to', 'get me to', 'find route',
+            'distance from', 'distance to', 'maps', 'open maps',
+            'show me on maps', 'google maps',
+        ]):
+            origin, destination = parse_route_intent(statement)
+            if origin and destination:
+                mode = parse_travel_mode(statement)
+                speak(f"Opening Google Maps with directions from {origin} to {destination}.")
+                google_maps_directions(origin, destination, mode)
+            elif destination:
+                speak(f"Opening Google Maps for {destination}.")
+                google_maps_search(destination)
             else:
-                open_maps('')
-                speak("Maps is open.")
+                # "open maps" with no destination
+                location = (
+                    statement
+                    .replace('show me', '').replace('on maps', '')
+                    .replace('open maps', '').replace('maps', '')
+                    .replace('open google maps', '').replace('google maps', '').strip()
+                )
+                if location and len(location) > 2:
+                    speak(f"Opening Google Maps for {location}.")
+                    google_maps_search(location)
+                else:
+                    import subprocess as _sp
+                    _sp.run(["open", "https://www.google.com/maps"], capture_output=True)
+                    speak("Google Maps is open.")
+
+        # ── Nearby search (coffee, petrol, hospital, etc.) ────────────────────
+        elif any(p in statement for p in ['near me', 'nearby', 'closest', 'nearest']):
+            poi = (
+                statement
+                .replace('find', '').replace('near me', '').replace('nearby', '')
+                .replace('closest', '').replace('nearest', '').replace('show', '')
+                .strip()
+            )
+            if poi:
+                speak(f"Searching for {poi} nearby on Google Maps.")
+                google_maps_nearby(poi)
+            else:
+                speak("What would you like to find nearby?")
 
         # ── FaceTime ─────────────────────────────────────────────────────────
         elif any(p in statement for p in ['facetime', 'video call', 'call via facetime']):
