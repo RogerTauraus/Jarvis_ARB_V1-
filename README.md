@@ -6,12 +6,25 @@ JARVIS runs locally on your Mac, wakes up when you say **"Hey Jarvis"**, and doe
 
 ---
 
-## What it can actually do
+## 🚀 What it can actually do
 
-### Open anything
+### 1. In-App Context Awareness (New!)
+JARVIS doesn't just open apps; it knows how to use them.
+
+```
+"In App Store search for Fortnite"   → Opens App Store directly to the results
+"In Chrome click the Sign In button" → Clicks it (no mouse needed)
+"In Chrome fill in the email field"  → Types your email
+"In Telegram search for John"        → Uses Cmd+F to find John
+"In Finder search for budget"        → Opens Finder search
+```
+
+**Context Memory**: If you say *"Open App Store"* and then follow up with *"Search for Fortnite in it"*, JARVIS remembers the active app and routes the search correctly.
+
+### 2. Open anything
 Say *"Open Spotify"*, *"Open Settings"*, *"Open my resume"* — it opens it. JARVIS scans every app on your Mac at startup so there's no hardcoded list to maintain. Works with 130+ apps out of the box.
 
-### Browser control (no clicking)
+### 3. Browser control (no clicking)
 Works with Chrome, Safari, Opera GX.
 
 ```
@@ -24,173 +37,88 @@ Works with Chrome, Safari, Opera GX.
 "New tab" / "Close tab"              → tab management
 ```
 
-### Compound commands
+### 4. Compound commands
 JARVIS understands multi-step instructions in one go:
-
 > *"Open Chrome and then search Star Wars and then open the first result"*
 
-It breaks that into 3 steps and does all of them in sequence.
-
-### Settings navigation
+### 5. Settings navigation
 Goes directly to the right panel — no hunting through menus.
-
 ```
 "Open Bluetooth settings"    → jumps to Bluetooth panel
 "Open Display settings"      → jumps to Displays
 "Open WiFi settings"         → jumps to Wi-Fi
-"Open Notification settings" → you get the idea
-```
-Works for 30+ system settings panels.
-
-### Bluetooth & WiFi
-```
-"Turn on Bluetooth"          → turns it on
-"Turn off Bluetooth"         → turns it off
-"Connect to AirPods"         → connects to your paired device by name
-"Turn off WiFi"              → kills WiFi
-"What network am I on?"      → tells you
 ```
 
-### Native apps — all by voice
+### 6. Native apps — all by voice
 ```
 "Text John saying I'll be late"         → sends iMessage
 "Create a note buy groceries"           → creates note in Notes
 "Remind me to call mum"                 → adds to Reminders
 "What are my reminders?"                → reads them out
-"Directions to the airport"             → opens Maps with route
+"Directions to the airport"             → opens Google Maps with route
 "FaceTime Mum"                          → starts a FaceTime call
 "Compose email to my boss"              → opens Mail compose window
 "Add event to calendar"                 → asks you the details and adds it
 ```
 
-### Real-time info
+### 7. Music (Spotify Auto-Play!)
+Play, pause, next, previous, volume controls.
+If you provide Spotify API credentials, JARVIS will fetch the exact track URI in the background and auto-play it perfectly without touching the UI.
 ```
-"What time is it?"     → "It's 3:23 PM"
-"What's the date?"     → "Today is Monday, June 16"
-"What's the weather?"  → "37°C, clear skies in Mumbai" (auto-detects location)
-"What's on my calendar today?" → reads today's events
+"Play Jungle Book"         → Finds the song on Spotify and plays it
+"Play the current song"    → Resumes playback
+"Next track"               → Skips
 ```
-
-### System controls
-Volume, brightness, sleep, lock, restart, shutdown — all by voice.
-
-### Music
-Play, pause, next, previous, now playing — controls Spotify and Apple Music.
 
 ---
 
-## Setup
+## ⚙️ Setup Instructions
 
-**Requirements:** Python 3.10+, macOS 12+
+**Requirements:** macOS 12+, Python 3.10+
 
+### Step 1: Install
+Clone the repository and run the automated installer script:
 ```bash
 git clone https://github.com/RogerTauraus/Jarvis_ARB_V1-.git
 cd Jarvis_ARB_V1-
-pip install -r requirements.txt
+./install.sh
 ```
 
-**Get a free API key** (for the AI brain) at [console.groq.com](https://console.groq.com) — no credit card needed.
+### Step 2: Configure API Keys
+The installer will create an `API/agent.env` file. You need to open this file and add your API keys:
 
-Create `API/agent.env`:
-```
-GROQ_API_KEY=your_key_here
-```
+1. **Groq (The Brain)**: Get a free key at [console.groq.com](https://console.groq.com)
+2. **Picovoice Porcupine (Wake word)**: Get a free key at [picovoice.ai/console](https://picovoice.ai/console/)
+3. **Spotify (Auto-play)**: Create a free app at [developer.spotify.com](https://developer.spotify.com/dashboard) and paste the Client ID / Secret.
 
-**Run it:**
+### Step 3: Run
 ```bash
+source venv/bin/activate
 python voice_assistant.py
 ```
-
 Say **"Hey Jarvis"** to activate. Say **"Sleep Jarvis"** to stop.
 
 ---
 
-## One-time setup you should know about
+## ⚠️ Important macOS Permissions
+You MUST grant your Terminal (or VS Code / iTerm) **Accessibility** permissions for JARVIS to control apps and simulate keystrokes:
+1. Open **System Settings** → **Privacy & Security** → **Accessibility**
+2. Toggle your terminal app ON.
 
-**Accessibility permission (for full app control):**
-System Settings → Privacy & Security → Accessibility → add Terminal
-
-**Enable in-browser typing/button clicking:**
-Chrome → View → Developer → Allow JavaScript from Apple Events
-
-Without these, most things still work — these just unlock the last bits.
+*For Chrome in-page clicking to work reliably, you must also enable `Allow JavaScript from Apple Events` in Chrome's Developer menu.*
 
 ---
 
-## How it works under the hood
+## 🧠 How it works under the hood
 
 ```
 You speak
-  → Wake word detected (OpenWakeWord, runs locally)
+  → Wake word detected (Porcupine / OpenWakeWord)
   → Google Speech Recognition converts audio to text
   → JARVIS tries to match a command pattern
   → If no match → LLM (Groq) parses intent and figures out what to do
   → Executes the action (AppleScript / Python / System call)
-  → Speaks the response back (pyttsx3)
-```
-
-For browser link clicking specifically: instead of injecting JavaScript (which Chrome blocks by default), JARVIS fetches the page HTML with Python, pulls out the link URLs, and navigates Chrome directly. No permissions, no fuss.
-
----
-
-## File structure
-
-```
-voice_assistant.py              ← main loop, all command routing
-assistant/
-  ai/
-    llm_engine.py               ← Groq → Gemini → offline fallback chain
-    memory.py                   ← keeps conversation context
-    internet_tools.py           ← web search
-  automation/
-    apps.py                     ← scans + launches all apps dynamically
-    browser.py                  ← browser automation (URL-based, no JS needed)
-    app_controls.py             ← Messages, Notes, Reminders, Maps, FaceTime, Mail
-    system_settings.py          ← Settings panels, Bluetooth, WiFi
-    window_control.py           ← detects active window, routes contextual commands
-    intent_router.py            ← LLM parses compound/natural language commands
-    system.py                   ← volume, brightness, sleep, shutdown
-    media.py                    ← music playback
-  wakeword/
-    porcupine_listener.py       ← wake word engine
-```
-
----
-
-## Common issues
-
-**"It says it's opening something but nothing happens"**
-Fixed in the latest version. Was a Chrome JS restriction issue — now uses direct URL navigation instead.
-
-**"Open first link says I'm not sure what to do"**
-Also fixed. Now works regardless of which app is frontmost.
-
-**Microphone errors (PaMacCore AUHAL -50)**
-Fixed. The wake word listener properly releases the mic before each command.
-
-**Wake word not working**
-```bash
-pip install openwakeword onnxruntime pyaudio
-```
-
----
-
-## Quick reference
-
-```
-Hey Jarvis                    → wake up
-Sleep Jarvis                  → go to sleep
-Open [any app]                → launches it
-Open [setting] settings       → opens that settings panel
-Open the first link           → clicks first link on current page
-Search [X] on Google          → searches Google
-Play [song] on YouTube        → finds and plays it
-Turn on/off Bluetooth         → toggles Bluetooth
-Connect to [device]           → connects Bluetooth device
-Text [contact] saying [msg]   → sends iMessage
-Remind me to [task]           → adds to Reminders
-What's the weather?           → tells you, with your location
-[X] and then [Y] and then [Z] → does all three in order
+  → Speaks the response back (ElevenLabs / pyttsx3)
 ```
 
 ---

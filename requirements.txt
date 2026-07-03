@@ -13,6 +13,8 @@ elevenlabs
 openwakeword
 onnxruntime
 numpy
+pvporcupine
+pvrecorder
 
 # ── Web & search ──────────────────────────────────────────────────────────────
 requests
