@@ -80,7 +80,7 @@ from assistant.awareness.personal_data import (
 from assistant.automation.spotify import (
     spotify_play, spotify_pause, spotify_resume, spotify_next, spotify_previous,
     spotify_volume, spotify_current_track, spotify_play_pause, spotify_shuffle,
-    spotify_repeat, spotify_like_current, spotify_open,
+    spotify_repeat, spotify_like_current, spotify_open, extract_spotify_query,
 )
 from assistant.automation.maps import (
     google_maps_directions, google_maps_search, google_maps_nearby,
@@ -288,11 +288,7 @@ if __name__ == '__main__':
                 if _last_opened_app == 'spotify' and any(
                     p in sub for p in ['play', 'listen to', 'put on']
                 ) and 'spotify' not in sub:
-                    query = sub
-                    for w in ['play me', 'play', 'listen to', 'put on',
-                              'song', 'track', 'the']:
-                        query = query.replace(w, ' ')
-                    query = ' '.join(query.split()).strip()
+                    query = extract_spotify_query(sub)
                     if query:
                         speak(f"Playing '{query}' on Spotify.")
                         result = spotify_play(query)
@@ -392,11 +388,9 @@ if __name__ == '__main__':
 
             # Play a song/artist/album
             elif any(p in stmt for p in ['play', 'put on', 'listen to', 'play me']):
-                query = stmt
-                for w in ['play me', 'play', 'put on', 'listen to', 'on spotify',
-                          'spotify', 'song', 'track', 'the']:
-                    query = query.replace(w, ' ')
-                query = ' '.join(query.split()).strip()
+                # Smart extraction: handles 'in Spotify play open up by Daniel Caesar'
+                # and 'open Spotify and play this is my life' correctly
+                query = extract_spotify_query(stmt)
                 if query and len(query) > 1:
                     speak(f"Looking for '{query}' on Spotify.")
                     result = spotify_play(query)
