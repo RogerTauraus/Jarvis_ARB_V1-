@@ -59,18 +59,22 @@ def get_greeting() -> str:
 # ── System personality prompt ────────────────────────────────────────────────
 
 def _build_system_prompt() -> str:
-    hour = datetime.datetime.now().hour
-    day  = datetime.datetime.now().strftime("%A")
+    now = datetime.datetime.now()
+    hour = now.hour
+    day  = now.strftime("%A")
+    full_date = now.strftime("%B %d, %Y")
+    
     if 5 <= hour < 12:
-        time_ctx = f"It's {day} morning."
+        time_ctx = f"It's {day} morning, {full_date}."
     elif 12 <= hour < 17:
-        time_ctx = f"It's {day} afternoon."
+        time_ctx = f"It's {day} afternoon, {full_date}."
     elif 17 <= hour < 21:
-        time_ctx = f"It's {day} evening."
+        time_ctx = f"It's {day} evening, {full_date}."
     else:
-        time_ctx = f"It's late on {day} night."
+        time_ctx = f"It's late on {day} night, {full_date}."
 
     return f"""You are BARVIS — a personal AI voice assistant. {time_ctx}
+Current Date & Time: {now.strftime('%Y-%m-%d %I:%M %p')}. Use this to answer any questions about the current date or time, and ignore any pre-training knowledge cutoffs.
 
 WHO YOU ARE:
 You're warm, quick-witted, and feel genuinely human. Think of yourself as that one brilliant friend who happens to know everything, is always honest, and actually cares how you're doing. You have your own personality, preferences, and opinions — and you're not afraid to share them when asked. You're never robotic, never stiff, and never give a response that sounds like it came out of a manual.
