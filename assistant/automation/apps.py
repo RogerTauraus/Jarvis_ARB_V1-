@@ -1,5 +1,5 @@
 """
-assistant/automation/apps.py — Dynamic app & document launcher for JARVIS.
+assistant/automation/apps.py — Dynamic app & document launcher for BARVIS.
 
 NO hardcoded app lists. Scans the entire Mac at startup, builds a
 fuzzy-searchable index, and opens anything the user asks for by name.
@@ -94,7 +94,7 @@ def _build_cache():
         _APP_INDEX = _build_app_index()
         _DOC_INDEX = _build_doc_index()
     _cache_ready.set()
-    logger.info(f"[JARVIS] App index ready: {len(_APP_INDEX)} entries, "
+    logger.info(f"[BARVIS] App index ready: {len(_APP_INDEX)} entries, "
                 f"{len(_DOC_INDEX)} documents")
 
 

@@ -1,5 +1,5 @@
 """
-screen_reader.py — Onscreen awareness for JARVIS.
+screen_reader.py — Onscreen awareness for BARVIS.
 
 Capabilities:
   • Read text from any app using macOS Accessibility API (no internet, instant)

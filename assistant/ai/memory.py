@@ -1,8 +1,8 @@
 """
-memory.py — Conversation memory for JARVIS.
+memory.py — Conversation memory for BARVIS.
   • Session memory: fast in-memory store for the current run
-  • Persistent history: saved to ~/.jarvis/history.json — survives restarts
-  • Context carries across sessions so JARVIS remembers what you talked about
+  • Persistent history: saved to ~/.barvis/history.json — survives restarts
+  • Context carries across sessions so BARVIS remembers what you talked about
 """
 
 import os
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 MAX_SESSION   = 10   # turns kept in RAM for LLM context (each turn = user+assistant)
 MAX_PERSISTED = 50   # turns saved to disk across sessions
 
-_HISTORY_DIR  = os.path.expanduser("~/.jarvis")
+_HISTORY_DIR  = os.path.expanduser("~/.barvis")
 _HISTORY_FILE = os.path.join(_HISTORY_DIR, "history.json")
 
 # ── Sensitive pattern filtering ───────────────────────────────────────────────
@@ -35,14 +35,14 @@ class ConversationMemory:
     Short-term session memory + long-term disk persistence.
 
     Session window: last MAX_SESSION turns (used for LLM context)
-    Persistent store: last MAX_PERSISTED turns written to ~/.jarvis/history.json
+    Persistent store: last MAX_PERSISTED turns written to ~/.barvis/history.json
     """
 
     def __init__(self, system_prompt: str = ""):
         self._lock = threading.Lock()
         self._history: list[dict] = []    # session window (in RAM)
         self._system_prompt = system_prompt or (
-            "You are JARVIS, a helpful AI voice assistant running on macOS. "
+            "You are BARVIS, a helpful AI voice assistant running on macOS. "
             "Keep responses concise and conversational — they will be spoken aloud. "
             "Avoid markdown, bullet points, or lists. Speak in plain English."
         )
@@ -79,7 +79,7 @@ class ConversationMemory:
             return "No recent conversation."
         lines = []
         for m in recent:
-            prefix = "You" if m["role"] == "user" else "JARVIS"
+            prefix = "You" if m["role"] == "user" else "BARVIS"
             lines.append(f"{prefix}: {m['content'][:120]}")
         return "\n".join(lines)
 

@@ -1,15 +1,15 @@
-# JARVIS — AI Voice Assistant for macOS
+# BARVIS — AI Voice Assistant for macOS
 
 Not Siri. Not Alexa. Something actually useful.
 
-JARVIS runs locally on your Mac, wakes up when you say **"Hey Jarvis"**, and does what you tell it — opens apps, controls your browser, plays YouTube, sends messages, toggles Bluetooth, checks the weather, reads your calendar. All by voice. No clicking required.
+BARVIS runs locally on your Mac, wakes up when you say **"Hey Barvis"**, and does what you tell it — opens apps, controls your browser, plays YouTube, sends messages, toggles Bluetooth, checks the weather, reads your calendar. All by voice. No clicking required.
 
 ---
 
 ## 🚀 What it can actually do
 
 ### 1. In-App Context Awareness (New!)
-JARVIS doesn't just open apps; it knows how to use them.
+BARVIS doesn't just open apps; it knows how to use them.
 
 ```
 "In App Store search for Fortnite"   → Opens App Store directly to the results
@@ -19,10 +19,10 @@ JARVIS doesn't just open apps; it knows how to use them.
 "In Finder search for budget"        → Opens Finder search
 ```
 
-**Context Memory**: If you say *"Open App Store"* and then follow up with *"Search for Fortnite in it"*, JARVIS remembers the active app and routes the search correctly.
+**Context Memory**: If you say *"Open App Store"* and then follow up with *"Search for Fortnite in it"*, BARVIS remembers the active app and routes the search correctly.
 
 ### 2. Open anything
-Say *"Open Spotify"*, *"Open Settings"*, *"Open my resume"* — it opens it. JARVIS scans every app on your Mac at startup so there's no hardcoded list to maintain. Works with 130+ apps out of the box.
+Say *"Open Spotify"*, *"Open Settings"*, *"Open my resume"* — it opens it. BARVIS scans every app on your Mac at startup so there's no hardcoded list to maintain. Works with 130+ apps out of the box.
 
 ### 3. Browser control (no clicking)
 Works with Chrome, Safari, Opera GX.
@@ -38,7 +38,7 @@ Works with Chrome, Safari, Opera GX.
 ```
 
 ### 4. Compound commands
-JARVIS understands multi-step instructions in one go:
+BARVIS understands multi-step instructions in one go:
 > *"Open Chrome and then search Star Wars and then open the first result"*
 
 ### 5. Settings navigation
@@ -63,7 +63,7 @@ Goes directly to the right panel — no hunting through menus.
 
 ### 7. Music (Spotify Auto-Play!)
 Play, pause, next, previous, volume controls.
-If you provide Spotify API credentials, JARVIS will fetch the exact track URI in the background and auto-play it perfectly without touching the UI.
+If you provide Spotify API credentials, BARVIS will fetch the exact track URI in the background and auto-play it perfectly without touching the UI.
 ```
 "Play Jungle Book"         → Finds the song on Spotify and plays it
 "Play the current song"    → Resumes playback
@@ -79,8 +79,8 @@ If you provide Spotify API credentials, JARVIS will fetch the exact track URI in
 ### Step 1: Install
 Clone the repository and run the automated installer script:
 ```bash
-git clone https://github.com/RogerTauraus/Jarvis_ARB_V1-.git
-cd Jarvis_ARB_V1-
+git clone https://github.com/RogerTauraus/Barvis_ARB_V1-.git
+cd Barvis_ARB_V1-
 ./install.sh
 ```
 
@@ -96,12 +96,12 @@ The installer will create an `API/agent.env` file. You need to open this file an
 source venv/bin/activate
 python voice_assistant.py
 ```
-Say **"Hey Jarvis"** to activate. Say **"Sleep Jarvis"** to stop.
+Say **"Hey Barvis"** to activate. Say **"Sleep Barvis"** to stop.
 
 ---
 
 ## ⚠️ Important macOS Permissions
-You MUST grant your Terminal (or VS Code / iTerm) **Accessibility** permissions for JARVIS to control apps and simulate keystrokes:
+You MUST grant your Terminal (or VS Code / iTerm) **Accessibility** permissions for BARVIS to control apps and simulate keystrokes:
 1. Open **System Settings** → **Privacy & Security** → **Accessibility**
 2. Toggle your terminal app ON.
 
@@ -115,7 +115,7 @@ You MUST grant your Terminal (or VS Code / iTerm) **Accessibility** permissions 
 You speak
   → Wake word detected (Porcupine / OpenWakeWord)
   → Google Speech Recognition converts audio to text
-  → JARVIS tries to match a command pattern
+  → BARVIS tries to match a command pattern
   → If no match → LLM (Groq) parses intent and figures out what to do
   → Executes the action (AppleScript / Python / System call)
   → Speaks the response back (ElevenLabs / pyttsx3)

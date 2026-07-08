@@ -1,5 +1,5 @@
 """
-internet_tools.py — Connectivity check, web search, and smart web answers for JARVIS.
+internet_tools.py — Connectivity check, web search, and smart web answers for BARVIS.
 
 smart_web_answer() pipeline:
   1. DuckDuckGo Instant Answer API (no scraping, instant)

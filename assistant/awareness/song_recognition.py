@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-assistant/awareness/song_recognition.py — Shazam-like song recognition for JARVIS.
+assistant/awareness/song_recognition.py — Shazam-like song recognition for BARVIS.
 
 Records ambient audio from mic, sends to Audd.io (free tier) for identification.
 Falls back to local Shazam CLI if available on macOS 12+.

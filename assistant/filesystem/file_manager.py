@@ -1,5 +1,5 @@
 """
-file_manager.py — Safe Finder and file system operations for JARVIS.
+file_manager.py — Safe Finder and file system operations for BARVIS.
 All destructive operations require explicit verbal confirmation before executing.
 """
 

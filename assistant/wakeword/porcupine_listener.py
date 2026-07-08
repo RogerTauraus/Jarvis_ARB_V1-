@@ -1,5 +1,5 @@
 """
-porcupine_listener.py — Local wake-word detection for JARVIS.
+porcupine_listener.py — Local wake-word detection for BARVIS.
 
 Engine priority (auto-selected, no config needed):
   1. OpenWakeWord  — FREE, no account, fully local, recommended
@@ -50,8 +50,8 @@ class _OpenWakeWordEngine:
 
     # Map of user-facing keyword names → openwakeword model identifiers
     KEYWORD_MAP = {
-        "jarvis":       "hey_jarvis",
-        "hey jarvis":   "hey_jarvis",
+        "barvis":       "hey_jarvis",
+        "hey barvis":   "hey_jarvis",
         "alexa":        "alexa",
         "mycroft":      "hey_mycroft",
         "computer":     "hey_jarvis",   # best match available
@@ -83,7 +83,7 @@ class _OpenWakeWordEngine:
         pa     = self._pyaudio.PyAudio()
         stream = None
 
-        print(f"[JARVIS] Wake-word engine active — say 'Hey Jarvis' to activate.")
+        print(f"[BARVIS] Wake-word engine active — say 'Hey Barvis' to activate.")
 
         try:
             while self._running:
@@ -163,10 +163,10 @@ class _PorcupineEngine:
     Picovoice Porcupine engine — higher accuracy, requires free access key.
     Get one at: https://console.picovoice.ai (personal/free tier available).
     """
-    BUILT_IN = ["jarvis", "computer", "hey google", "alexa", "ok google"]
+    BUILT_IN = ["barvis", "computer", "hey google", "alexa", "ok google"]
 
     def __init__(self, keyword: str, on_wake):
-        self._keyword  = keyword.lower() if keyword.lower() in self.BUILT_IN else "jarvis"
+        self._keyword  = keyword.lower() if keyword.lower() in self.BUILT_IN else "barvis"
         self._on_wake  = on_wake
         self._running  = False
 
@@ -226,7 +226,7 @@ class WakeWordListener:
         listener.stop()
     """
 
-    def __init__(self, on_wake=None, keyword: str = "jarvis"):
+    def __init__(self, on_wake=None, keyword: str = "barvis"):
         self._on_wake  = on_wake or (lambda: None)
         self._keyword  = keyword
         self._thread   = None
@@ -260,7 +260,7 @@ class WakeWordListener:
         self._engine.start()
         self._thread = threading.Thread(target=self._engine.run, daemon=True)
         self._thread.start()
-        print(f"[JARVIS] Wake-word listener started ({self._engine_name})")
+        print(f"[BARVIS] Wake-word listener started ({self._engine_name})")
         return True
 
     def stop(self):
@@ -269,7 +269,7 @@ class WakeWordListener:
             self._engine.stop()
         if self._thread:
             self._thread.join(timeout=3)
-        print(f"[JARVIS] Wake-word listener stopped.")
+        print(f"[BARVIS] Wake-word listener stopped.")
 
     def pause(self):
         """Pause mic reading so takeCommand() can use the microphone."""

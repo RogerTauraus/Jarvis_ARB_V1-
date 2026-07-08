@@ -1,6 +1,6 @@
 """
-menubar_app.py — JARVIS macOS Menu Bar App (py2app compatible)
-Shows a ⬡ icon in the menu bar to start/stop/restart JARVIS.
+menubar_app.py — BARVIS macOS Menu Bar App (py2app compatible)
+Shows a ⬡ icon in the menu bar to start/stop/restart BARVIS.
 """
 
 import rumps
@@ -11,13 +11,13 @@ import threading
 import time
 from pathlib import Path
 
-JARVIS_DIR = Path("/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Jarvis_v1")
+BARVIS_DIR = Path("/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Barvis_v1")
 PYTHON     = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
-LOG_DIR    = JARVIS_DIR / "logs"
-LOG_OUT    = LOG_DIR / "jarvis.log"
-LOG_ERR    = LOG_DIR / "jarvis_error.log"
-PID_FILE   = LOG_DIR / "jarvis.pid"
-PLIST_DST  = Path.home() / "Library/LaunchAgents/com.jarvis.assistant.plist"
+LOG_DIR    = BARVIS_DIR / "logs"
+LOG_OUT    = LOG_DIR / "barvis.log"
+LOG_ERR    = LOG_DIR / "barvis_error.log"
+PID_FILE   = LOG_DIR / "barvis.pid"
+PLIST_DST  = Path.home() / "Library/LaunchAgents/com.barvis.assistant.plist"
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -43,16 +43,16 @@ def _autostart_on() -> bool:
 
 # ── App ────────────────────────────────────────────────────────────────────────
 
-class JarvisApp(rumps.App):
+class BarvisApp(rumps.App):
 
     def __init__(self):
-        super().__init__("JARVIS", title="⬡", quit_button=None)
+        super().__init__("BARVIS", title="⬡", quit_button=None)
         LOG_DIR.mkdir(parents=True, exist_ok=True)
 
         self.status   = rumps.MenuItem("● Stopped")
-        self.btn_start   = rumps.MenuItem("▶  Start JARVIS",        callback=self.on_start)
-        self.btn_stop    = rumps.MenuItem("■  Stop JARVIS",         callback=None)
-        self.btn_restart = rumps.MenuItem("↺  Restart JARVIS",      callback=None)
+        self.btn_start   = rumps.MenuItem("▶  Start BARVIS",        callback=self.on_start)
+        self.btn_stop    = rumps.MenuItem("■  Stop BARVIS",         callback=None)
+        self.btn_restart = rumps.MenuItem("↺  Restart BARVIS",      callback=None)
         self.btn_log     = rumps.MenuItem("📋 View Logs",            callback=self.on_logs)
         self.btn_auto    = rumps.MenuItem("🚀 Enable Auto-Start",    callback=self.on_autostart)
         self.btn_perms   = rumps.MenuItem("🔐 Grant Permissions",    callback=self.on_perms)
@@ -110,7 +110,7 @@ class JarvisApp(rumps.App):
 
         p = subprocess.Popen(
             [PYTHON, "voice_assistant.py"],
-            cwd=str(JARVIS_DIR),
+            cwd=str(BARVIS_DIR),
             stdout=open(LOG_OUT, "a"),
             stderr=open(LOG_ERR, "a"),
             start_new_session=True,
@@ -118,7 +118,7 @@ class JarvisApp(rumps.App):
         )
         PID_FILE.write_text(str(p.pid))
         self._refresh()
-        rumps.notification("JARVIS", "Started", "Say 'Hey Jarvis' to activate!")
+        rumps.notification("BARVIS", "Started", "Say 'Hey Barvis' to activate!")
 
     def on_stop(self, _=None):
         pid = _pid()
@@ -133,7 +133,7 @@ class JarvisApp(rumps.App):
             pass
         PID_FILE.unlink(missing_ok=True)
         self._refresh()
-        rumps.notification("JARVIS", "Stopped", "JARVIS has been shut down.")
+        rumps.notification("BARVIS", "Stopped", "BARVIS has been shut down.")
 
     def on_restart(self, _=None):
         self.on_stop()
@@ -144,18 +144,18 @@ class JarvisApp(rumps.App):
         if LOG_OUT.exists():
             subprocess.run(["open", str(LOG_OUT)])
         else:
-            rumps.alert("No logs yet. Start JARVIS first.")
+            rumps.alert("No logs yet. Start BARVIS first.")
 
     def on_autostart(self, _):
         if _autostart_on():
             subprocess.run(["launchctl", "unload", str(PLIST_DST)], capture_output=True)
             PLIST_DST.unlink(missing_ok=True)
-            rumps.notification("JARVIS", "Auto-Start Disabled", "JARVIS won't start at login.")
+            rumps.notification("BARVIS", "Auto-Start Disabled", "BARVIS won't start at login.")
         else:
             PLIST_DST.parent.mkdir(parents=True, exist_ok=True)
             PLIST_DST.write_text(_plist_content(run_at_load=True))
             subprocess.run(["launchctl", "load", str(PLIST_DST)], capture_output=True)
-            rumps.notification("JARVIS", "Auto-Start Enabled", "JARVIS will start at every login.")
+            rumps.notification("BARVIS", "Auto-Start Enabled", "BARVIS will start at every login.")
         self._refresh()
 
     def on_perms(self, _):
@@ -170,7 +170,7 @@ class JarvisApp(rumps.App):
                 "🎙  Microphone  → Terminal / Python\n"
                 "♿  Accessibility → Terminal / Python\n"
                 "🤖  Automation  → Terminal → System Events\n\n"
-                "Then restart JARVIS from the menu."
+                "Then restart BARVIS from the menu."
             )
         )
 
@@ -182,13 +182,13 @@ def _plist_content(run_at_load: bool) -> str:
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-    <key>Label</key><string>com.jarvis.assistant</string>
+    <key>Label</key><string>com.barvis.assistant</string>
     <key>ProgramArguments</key>
     <array>
         <string>{PYTHON}</string>
-        <string>{JARVIS_DIR}/voice_assistant.py</string>
+        <string>{BARVIS_DIR}/voice_assistant.py</string>
     </array>
-    <key>WorkingDirectory</key><string>{JARVIS_DIR}</string>
+    <key>WorkingDirectory</key><string>{BARVIS_DIR}</string>
     <key>StandardOutPath</key><string>{LOG_OUT}</string>
     <key>StandardErrorPath</key><string>{LOG_ERR}</string>
     <key>RunAtLoad</key><{"true" if run_at_load else "false"}/>
@@ -208,4 +208,4 @@ def _plist_content(run_at_load: bool) -> str:
 # ── Entry ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    JarvisApp().run()
+    BarvisApp().run()

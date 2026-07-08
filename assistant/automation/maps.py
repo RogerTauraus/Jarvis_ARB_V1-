@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-assistant/automation/maps.py — Google Maps & Apple Maps routing for JARVIS.
+assistant/automation/maps.py — Google Maps & Apple Maps routing for BARVIS.
 
 Supports:
  - Directions from A to B (driving, walking, transit)

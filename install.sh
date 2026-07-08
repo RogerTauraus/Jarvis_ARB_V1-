@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# JARVIS Installation Script for macOS
+# BARVIS Installation Script for macOS
 
 set -e
 
 echo "================================================="
-echo "   JARVIS Voice Assistant — macOS Installer"
+echo "   BARVIS Voice Assistant — macOS Installer"
 echo "================================================="
 echo ""
 
 # 1. Check OS
 if [[ "$OSTYPE" != "darwin"* ]]; then
-    echo "❌ Error: JARVIS is currently only supported on macOS."
+    echo "❌ Error: BARVIS is currently only supported on macOS."
     exit 1
 fi
 
@@ -54,13 +54,13 @@ echo "================================================="
 echo "🎉 Installation Complete!"
 echo "================================================="
 echo ""
-echo "To run JARVIS:"
+echo "To run BARVIS:"
 echo "  1. Activate the environment: source venv/bin/activate"
 echo "  2. Edit API/agent.env to add your API keys (Groq, Spotify, Porcupine, etc.)"
-echo "  3. Start JARVIS: python voice_assistant.py"
+echo "  3. Start BARVIS: python voice_assistant.py"
 echo ""
 echo "⚠️  IMPORTANT macOS SETTINGS:"
 echo "  - You MUST grant Terminal (or iTerm, VS Code) Accessibility permissions:"
 echo "    System Settings -> Privacy & Security -> Accessibility -> (Toggle your terminal app ON)"
-echo "  - This is required for JARVIS to control apps and simulate keyboard events."
+echo "  - This is required for BARVIS to control apps and simulate keyboard events."
 echo ""

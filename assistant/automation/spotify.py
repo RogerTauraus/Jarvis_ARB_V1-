@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-assistant/automation/spotify.py — Full Spotify control for JARVIS on macOS.
+assistant/automation/spotify.py — Full Spotify control for BARVIS on macOS.
 
 Playback strategy (in order of reliability):
  1. Spotify Web API — Client Credentials (search → get URI → AppleScript play)

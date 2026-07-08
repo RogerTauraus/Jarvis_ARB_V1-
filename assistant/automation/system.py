@@ -1,5 +1,5 @@
 """
-system.py — macOS system controls for JARVIS.
+system.py — macOS system controls for BARVIS.
 Volume, brightness, sleep, lock, shutdown, restart — via AppleScript and osascript.
 """
 

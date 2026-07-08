@@ -1,5 +1,5 @@
 """
-vision.py — Visual intelligence for JARVIS.
+vision.py — Visual intelligence for BARVIS.
 
 Analyze what the camera sees (webcam), or analyze any image file.
 Uses OpenCV (already installed) for webcam capture.
@@ -124,7 +124,7 @@ def analyze_image(image_path: str, question: str = "") -> str:
 
 def describe_what_i_see(question: str = "") -> str:
     """
-    Capture webcam and describe what JARVIS sees.
+    Capture webcam and describe what BARVIS sees.
     Main entry point for "what do you see" / "look at this" commands.
     """
     path = capture_webcam()

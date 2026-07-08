@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-assistant/automation/in_app_actions.py — In-app action automation for JARVIS.
+assistant/automation/in_app_actions.py — In-app action automation for BARVIS.
 
-Lets JARVIS perform actions INSIDE open applications, not just launch them.
+Lets BARVIS perform actions INSIDE open applications, not just launch them.
 Covers: App Store, Chrome, Safari, Finder, Mail, Notes, Telegram, and a
         generic Cmd+F search fallback that works in most macOS apps.
 """

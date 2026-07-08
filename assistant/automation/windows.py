@@ -1,5 +1,5 @@
 """
-windows.py — macOS window management for JARVIS.
+windows.py — macOS window management for BARVIS.
 Minimize, maximize, close, move, and split windows via AppleScript + System Events.
 """
 

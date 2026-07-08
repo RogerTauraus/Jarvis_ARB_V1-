@@ -1,5 +1,5 @@
 """
-assistant/automation/browser.py — Real-time browser automation for JARVIS.
+assistant/automation/browser.py — Real-time browser automation for BARVIS.
 
 Strategy:
   • Primary: URL navigation via AppleScript (no JS permission needed)

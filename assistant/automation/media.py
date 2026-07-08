@@ -1,5 +1,5 @@
 """
-media.py — System-wide media playback control for JARVIS.
+media.py — System-wide media playback control for BARVIS.
 Controls Spotify, Apple Music, and system media keys via AppleScript.
 """
 

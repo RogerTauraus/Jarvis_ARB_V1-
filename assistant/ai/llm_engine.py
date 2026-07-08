@@ -1,5 +1,5 @@
 """
-llm_engine.py — JARVIS AI Brain with Personality, Emotions & Style.
+llm_engine.py — BARVIS AI Brain with Personality, Emotions & Style.
 
 Provider cascade (all free):
   1. Groq (Llama 3.3-70B) — fastest, feels instant like Siri
@@ -70,7 +70,7 @@ def _build_system_prompt() -> str:
     else:
         time_ctx = f"It's late on {day} night."
 
-    return f"""You are JARVIS — a personal AI voice assistant. {time_ctx}
+    return f"""You are BARVIS — a personal AI voice assistant. {time_ctx}
 
 WHO YOU ARE:
 You're warm, quick-witted, and feel genuinely human. Think of yourself as that one brilliant friend who happens to know everything, is always honest, and actually cares how you're doing. You have your own personality, preferences, and opinions — and you're not afraid to share them when asked. You're never robotic, never stiff, and never give a response that sounds like it came out of a manual.
@@ -211,9 +211,9 @@ def ask_llm(prompt: str, memory: ConversationMemory) -> str:
             # Build full conversation context as a single prompt
             ctx = sys_prompt + "\n\n"
             for m in messages:
-                role = "User" if m["role"] == "user" else "JARVIS"
+                role = "User" if m["role"] == "user" else "BARVIS"
                 ctx += f"{role}: {m['content']}\n"
-            ctx += "JARVIS:"
+            ctx += "BARVIS:"
             from google.genai import types as _gtypes
             resp = gemini_client.models.generate_content(
                 model="gemini-2.0-flash",
@@ -254,6 +254,40 @@ def _ensure_signoff(reply: str) -> str:
     return reply
 
 
+def raw_llm_request(prompt: str, json_mode: bool = False) -> str:
+    """
+    Direct LLM call with no memory and no conversational personality.
+    Used for background tasks like command parsing.
+    """
+    if not is_online():
+        return ""
+    
+    sys_prompt = "You are BARVIS. Return ONLY the requested format without markdown or extra text."
+    
+    client = _groq()
+    if client:
+        try:
+            params = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 500,
+                "temperature": 0.1,
+                "timeout": 15,
+            }
+            if json_mode:
+                params["response_format"] = {"type": "json_object"}
+                
+            resp = client.chat.completions.create(**params)
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            logger.warning(f"Groq raw error: {e}")
+            
+    return ""
+
+
 # ── Offline fallback ────────────────────────────────────────────────────────
 
 _OFFLINE_JOKES = [
@@ -276,7 +310,7 @@ def _offline_fallback(prompt: str) -> str:
     if any(w in p for w in ["date", "today", "what day"]):
         return f"Today's {now.strftime('%A, %B %d')}."
     if "your name" in p or "who are you" in p:
-        return "I'm JARVIS — your personal AI. Nice to officially meet you."
+        return "I'm BARVIS — your personal AI. Nice to officially meet you."
     if any(w in p for w in ["hello", "hi", "hey"]):
         return f"{get_greeting()} What do you need?"
     if "how are you" in p:

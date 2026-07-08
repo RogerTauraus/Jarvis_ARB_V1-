@@ -12,6 +12,7 @@ import json
 import requests
 import smtplib
 import platform
+import re
 import urllib.parse
 from dotenv import load_dotenv
 from email.mime.text import MIMEText
@@ -119,7 +120,7 @@ def speak(text):
     Primary  : macOS Samantha voice (always available, no API key needed)
     Optional : ElevenLabs TTS (set ELEVENLABS_API_KEY in API/agent.env to enable)
     """
-    print(f"JARVIS: {text}")
+    print(f"BARVIS: {text}")
 
     if el_client:
         try:
@@ -222,7 +223,7 @@ def takeCommand():
     return statement
 
 
-print("[JARVIS] Starting up...")
+print("[BARVIS] Starting up...")
 wishMe()
 
 # ── Post-speak() module setup ─────────────────────────────────────────────────
@@ -237,33 +238,47 @@ _file_manager = FileManager(confirm_fn=_confirmation_handler)
 
 # Start wake-word listener in background (silent fail if key not set)
 _wake_listener = WakeWordListener(
-    on_wake=lambda: print("[WAKE WORD DETECTED] Activating JARVIS..."),
-    keyword="jarvis"
+    on_wake=lambda: print("[WAKE WORD DETECTED] Activating BARVIS..."),
+    keyword="barvis"
 )
 _wake_listener.start()
 
 # Log connectivity status
 if is_online():
-    print("[JARVIS] Online mode active. LLM + internet tools available.")
+    print("[BARVIS] Online mode active. LLM + internet tools available.")
 else:
-    print("[JARVIS] Offline mode. Local commands only.")
+    print("[BARVIS] Offline mode. Local commands only.")
 
 if __name__ == '__main__':
+    last_interaction_time = time.time()
+    
     while True:
+        # 3-minute idle timeout (180 seconds)
+        if time.time() - last_interaction_time > 180:
+            speak("I haven't heard from you in a while. Shutting down to save power. Goodbye.")
+            try:
+                _wake_listener.stop()
+            except Exception:
+                pass
+            import sys
+            sys.exit(0)
+            
         statement = takeCommand().lower()
         if statement == "None":
             continue
+            
+        last_interaction_time = time.time()
 
         # ── Sleep / Stop commands ─────────────────────────────────────────────
         if any(p in statement for p in [
-            "sleep jarvis", "jarvis sleep", "goodbye jarvis", "bye jarvis",
-            "good bye", "ok bye", "shut down jarvis", "jarvis quit", "stop jarvis",
-            "goodnight jarvis", "good night jarvis", "night jarvis",
+            "sleep barvis", "barvis sleep", "goodbye barvis", "bye barvis",
+            "good bye", "ok bye", "shut down barvis", "barvis quit", "stop barvis",
+            "goodnight barvis", "good night barvis", "night barvis",
             "goodbye", "goodnight", "good night", "good bye",
             "you can sleep", "go to sleep", "sleep now", "shut down now",
             "see you later", "see you", "take care", "that will be all",
             "you can go", "you can stop", "you can rest", "stop now",
-            "have a good", "catch you later", "peace jarvis", "later jarvis",
+            "have a good", "catch you later", "peace barvis", "later barvis",
         ]):
             speak("Alright, shutting down. See you when you need me.")
             try:
@@ -667,7 +682,7 @@ if __name__ == '__main__':
             if not content:
                 speak("What should I write in the note?")
                 content = takeCommand()
-            speak(create_note('JARVIS', content))
+            speak(create_note('BARVIS', content))
 
         elif 'add to my note' in statement or 'append to note' in statement:
             content = statement.replace('add to my note', '').replace('append to note', '').strip()
@@ -1520,7 +1535,7 @@ if __name__ == '__main__':
             speak("Done — conversation history cleared. Fresh start.")
 
         # -- Conversational / opinion questions: skip route_with_llm
-        # Go straight to LLM for any question JARVIS should just answer
+        # Go straight to LLM for any question BARVIS should just answer
         elif any(statement.lower().startswith(p) for p in [
             "what do you think", "what is your opinion", "whats your opinion",
             "do you think", "do you believe", "do you like", "do you prefer",
@@ -1528,7 +1543,8 @@ if __name__ == '__main__':
             "if you were", "in your opinion", "what is", "who is", "who was",
             "what was", "why is", "why was", "why did", "how does", "how did",
             "how do", "how is", "can you explain", "explain", "tell me about",
-            "what happened", "talk to me about", "did you know",
+            "what happened", "talk to me about", "did you know", "what's up",
+            "whats up", "how are you", "are you",
         ]) or any(p in statement.lower() for p in [
             "what do you think", "your opinion", "your thoughts", "your view",
             "your take on", "do you think", "in your opinion", "do you agree",

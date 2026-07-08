@@ -1,10 +1,10 @@
 """
-writing_tools.py — Clipboard-based writing assistant for JARVIS.
+writing_tools.py — Clipboard-based writing assistant for BARVIS.
 
 How it works:
   1. User copies text to clipboard
   2. User says "proofread this" / "make this formal" / "summarize this"
-  3. JARVIS processes it through LLM
+  3. BARVIS processes it through LLM
   4. Result is placed back in clipboard
   5. User pastes anywhere
 
@@ -162,7 +162,7 @@ def summarize_text(text: str = "") -> str:
     result = _call_llm(prompt)
     if result:
         set_clipboard(result)
-        # Also return it verbally so JARVIS can speak it
+        # Also return it verbally so BARVIS can speak it
         return f"Here's the summary: {result}"
     return "Something went wrong. Try again."
 

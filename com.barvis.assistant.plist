@@ -5,24 +5,24 @@
 <dict>
     <!-- Unique identifier for this LaunchAgent -->
     <key>Label</key>
-    <string>com.jarvis.assistant</string>
+    <string>com.barvis.assistant</string>
 
     <!-- Command to run -->
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Jarvis_v1/launch_jarvis.sh</string>
+        <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Barvis_v1/launch_barvis.sh</string>
     </array>
 
     <!-- Working directory -->
     <key>WorkingDirectory</key>
-    <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Jarvis_v1</string>
+    <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Barvis_v1</string>
 
     <!-- Log output -->
     <key>StandardOutPath</key>
-    <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Jarvis_v1/logs/jarvis.log</string>
+    <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Barvis_v1/logs/barvis.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Jarvis_v1/logs/jarvis_error.log</string>
+    <string>/Users/ashwinrogerbaxla/Desktop/Visual Code Studio/Barvis_v1/logs/barvis_error.log</string>
 
     <!-- Start at login — set to false if you want manual control only -->
     <key>RunAtLoad</key>
@@ -40,7 +40,7 @@
     <key>SessionCreate</key>
     <true/>
 
-    <!-- Environment variables passed to JARVIS -->
+    <!-- Environment variables passed to BARVIS -->
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>

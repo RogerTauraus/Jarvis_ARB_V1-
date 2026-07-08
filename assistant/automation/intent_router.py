@@ -1,7 +1,7 @@
 """
 assistant/automation/intent_router.py — LLM-based generative command understanding.
 
-When JARVIS hears something that doesn't match a hardcoded pattern, this module
+When BARVIS hears something that doesn't match a hardcoded pattern, this module
 sends the command to the LLM and gets back a structured list of actions to execute.
 
 Also handles compound commands: "open Chrome and search Star Wars and open first result"
@@ -33,39 +33,34 @@ def split_compound(statement: str) -> list:
 
 # ── Action definitions (what the LLM can choose from) ─────────────────────────
 ACTION_SCHEMA = """
-AVAILABLE ACTIONS (return as a JSON array):
-- {"type": "open_app", "name": "app name"}
-- {"type": "open_url", "url": "https://..."}
-- {"type": "search_web", "query": "search terms", "engine": "google|youtube|bing"}
-- {"type": "click_result", "index": 1}
-- {"type": "click_link", "index": 1}
-- {"type": "click_button", "text": "button text"}
-- {"type": "type_text", "text": "text", "submit": true}
-- {"type": "press_enter"}
-- {"type": "scroll", "direction": "up|down"}
-- {"type": "open_setting", "name": "bluetooth|wifi|display|sound|privacy|battery|..."}
-- {"type": "toggle_bluetooth", "state": "on|off|toggle"}
-- {"type": "toggle_wifi", "state": "on|off|toggle"}
-- {"type": "bluetooth_connect", "device": "device name"}
-- {"type": "bluetooth_disconnect", "device": "device name"}
-- {"type": "list_bt_devices"}
-- {"type": "get_wifi_state"}
-- {"type": "get_bluetooth_state"}
-- {"type": "set_volume", "level": 50}
-- {"type": "go_back"}
-- {"type": "go_forward"}
-- {"type": "refresh_page"}
-- {"type": "new_tab"}
-- {"type": "close_tab"}
-- {"type": "speak", "text": "response to say to user"}
+AVAILABLE ACTIONS (return as a JSON object with an "actions" array):
+{"actions": [
+  {"type": "open_app", "name": "app name"},
+  {"type": "open_url", "url": "https://..."},
+  {"type": "search_web", "query": "search terms", "engine": "google|youtube|bing"},
+  {"type": "click_result", "index": 1},
+  {"type": "click_link", "index": 1},
+  {"type": "click_button", "text": "button text"},
+  {"type": "type_text", "text": "text", "submit": true},
+  {"type": "press_enter"},
+  {"type": "scroll", "direction": "up|down"},
+  {"type": "open_setting", "name": "bluetooth|wifi|display|sound|privacy|battery|..."},
+  {"type": "toggle_bluetooth", "state": "on|off|toggle"},
+  {"type": "toggle_wifi", "state": "on|off|toggle"},
+  {"type": "bluetooth_connect", "device": "device name"},
+  {"type": "bluetooth_disconnect", "device": "device name"},
+  {"type": "list_bt_devices"},
+  {"type": "get_wifi_state"},
+  {"type": "get_bluetooth_state"},
+  {"type": "set_volume", "level": 50},
+  {"type": "go_back"},
+  {"type": "go_forward"},
+  {"type": "refresh_page"},
+  {"type": "new_tab"},
+  {"type": "close_tab"},
+  {"type": "speak", "text": "response to say to user"}
+]}
 """
-
-_SYSTEM_PROMPT = (
-    "You are JARVIS, an AI assistant that controls a Mac computer. "
-    "Parse voice commands into executable actions. "
-    "Return ONLY a valid JSON array. No explanation, no markdown, no code blocks."
-)
-
 
 def llm_parse_actions(statement: str, context: dict = None) -> list:
     """
@@ -84,21 +79,16 @@ def llm_parse_actions(statement: str, context: dict = None) -> list:
         f"Voice command: \"{statement}\"\n"
         f"{ctx_str}\n\n"
         f"{ACTION_SCHEMA}\n"
-        "Return JSON array only:"
+        "Return JSON only:"
     )
 
     try:
-        from assistant.ai.llm_engine import ask_llm
-        from assistant.ai.memory import ConversationMemory
-        mem = ConversationMemory()
-        # Pass a special flag so ask_llm doesn't wrap in conversation prose
-        response = ask_llm(prompt, mem)
-        # Extract JSON array from response
-        json_m = re.search(r'\[.*?\]', response, re.DOTALL)
-        if json_m:
-            actions = json.loads(json_m.group())
-            if isinstance(actions, list):
-                return actions
+        from assistant.ai.llm_engine import raw_llm_request
+        response = raw_llm_request(prompt, json_mode=True)
+        if response:
+            data = json.loads(response)
+            if "actions" in data and isinstance(data["actions"], list):
+                return data["actions"]
     except Exception as e:
         logger.debug(f"LLM parse error: {e}")
 

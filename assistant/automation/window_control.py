@@ -1,8 +1,8 @@
 """
 assistant/automation/window_control.py — Context-aware window interaction.
 
-Detects the frontmost application and routes JARVIS commands to the
-correct handler so JARVIS can work inside whatever window is active.
+Detects the frontmost application and routes BARVIS commands to the
+correct handler so BARVIS can work inside whatever window is active.
 """
 
 import subprocess
@@ -186,7 +186,7 @@ def handle_in_window_command(statement: str) -> str | None:
 
         # YouTube context commands
         if ctx["page_type"] == "youtube":
-            if "pause" in s or ("stop" in s and "jarvis" not in s):
+            if "pause" in s or ("stop" in s and "barvis" not in s):
                 return youtube_toggle_pause()
             if "next" in s or "skip" in s:
                 return youtube_next()
